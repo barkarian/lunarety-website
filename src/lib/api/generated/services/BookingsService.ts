@@ -25,7 +25,7 @@ export class BookingsService {
     }> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/website/{websiteApiKey}/properties/bookings/{bookingId}',
+            url: '/{websiteApiKey}/properties/bookings/{bookingId}',
             path: {
                 'websiteApiKey': websiteApiKey,
                 'bookingId': bookingId,
@@ -61,7 +61,7 @@ export class BookingsService {
     }> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/api/website/{websiteApiKey}/properties/bookings/{bookingId}',
+            url: '/{websiteApiKey}/properties/bookings/{bookingId}',
             path: {
                 'websiteApiKey': websiteApiKey,
                 'bookingId': bookingId,
@@ -118,7 +118,7 @@ export class BookingsService {
     }> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/website/{websiteApiKey}/properties/bookings/create',
+            url: '/{websiteApiKey}/properties/bookings/create',
             path: {
                 'websiteApiKey': websiteApiKey,
             },

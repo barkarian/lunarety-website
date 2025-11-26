@@ -44,7 +44,7 @@ export class AvailabilityService {
     }> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/website/{websiteApiKey}/properties/get-availability',
+            url: '/{websiteApiKey}/properties/get-availability',
             path: {
                 'websiteApiKey': websiteApiKey,
             },

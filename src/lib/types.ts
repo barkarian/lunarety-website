@@ -1,0 +1,181 @@
+export interface RoomOccupancy {
+  adults: number;
+  children: number;
+}
+
+export interface SearchParams {
+  from?: string;
+  to?: string;
+  rooms?: string;
+}
+
+// Date range with YYYYMMDD format (e.g., 20251231)
+export interface DateRangeNumber {
+  from: number | undefined;
+  to?: number | undefined;
+}
+
+export interface Property {
+  id: number;
+  name: string;
+  description?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  images?: Array<{ url: string; alt?: string }>;
+  amenities?: string[];
+  rating?: number;
+  reviewCount?: number;
+  pricePerNight?: number;
+  currency?: string;
+  rooms?: Room[];
+  availability?: AvailabilityInfo;
+}
+
+export interface Room {
+  id: number;
+  name: string;
+  description?: string;
+  maxGuests: number;
+  maxAdults?: number;
+  maxChildren?: number;
+  bedType?: string;
+  amenities?: string[];
+  images?: Array<{ url: string; alt?: string }>;
+  pricePerNight?: number;
+  available?: boolean;
+  quantity?: number;
+}
+
+export interface AvailabilityInfo {
+  available: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  rooms?: Array<{
+    roomId: number;
+    available: boolean;
+    price: number;
+    availableCount: number;
+  }>;
+}
+
+export interface Booking {
+  id: string;
+  property: Property | number;
+  checkIn: string;
+  checkOut: string;
+  guestName: string;
+  guestEmail: string;
+  guestPhone?: string;
+  guests: number;
+  totalPrice: number;
+  currency?: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  rooms?: Array<{
+    roomId: number;
+    roomName: string;
+    adults: number;
+    children: number;
+    price: number;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  notes?: string;
+}
+
+export function parseRooms(roomsParam: string | undefined): RoomOccupancy[] {
+  if (!roomsParam) {
+    return [{ adults: 2, children: 0 }];
+  }
+
+  try {
+    const decoded = decodeURIComponent(roomsParam);
+    return JSON.parse(decoded);
+  } catch {
+    return [{ adults: 2, children: 0 }];
+  }
+}
+
+export function serializeRooms(rooms: RoomOccupancy[]): string {
+  return encodeURIComponent(JSON.stringify(rooms));
+}
+
+/**
+ * Convert Date to YYYYMMDD number format (e.g., 20251231)
+ */
+export function dateToNumber(date: Date): number {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return parseInt(`${year}${month}${day}`, 10);
+}
+
+/**
+ * Convert YYYYMMDD number to Date object
+ */
+export function numberToDate(num: number): Date {
+  const str = String(num);
+  const year = parseInt(str.substring(0, 4), 10);
+  const month = parseInt(str.substring(4, 6), 10) - 1; // 0-indexed
+  const day = parseInt(str.substring(6, 8), 10);
+  return new Date(year, month, day);
+}
+
+/**
+ * Format YYYYMMDD number to display string
+ */
+export function formatDateNumber(num: number, format: "short" | "long" = "short"): string {
+  const date = numberToDate(num);
+  if (format === "long") {
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Get default dates: from = today + 3 days, to = today + 7 days
+ * Returns YYYYMMDD format numbers
+ */
+export function getDefaultDates(): { from: number; to: number } {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const fromDate = new Date(today);
+  fromDate.setDate(fromDate.getDate() + 3);
+
+  const toDate = new Date(today);
+  toDate.setDate(toDate.getDate() + 7);
+
+  return {
+    from: dateToNumber(fromDate),
+    to: dateToNumber(toDate),
+  };
+}
+
+export function formatCurrency(amount: number, currency = "EUR"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+/**
+ * Calculate nights between two YYYYMMDD format dates
+ */
+export function calculateNights(from: number, to: number): number {
+  const fromDate = numberToDate(from);
+  const toDate = numberToDate(to);
+  const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}

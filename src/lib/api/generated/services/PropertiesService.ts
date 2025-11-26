@@ -54,7 +54,7 @@ export class PropertiesService {
     }> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/website/{websiteApiKey}/properties',
+            url: '/{websiteApiKey}/properties',
             path: {
                 'websiteApiKey': websiteApiKey,
             },

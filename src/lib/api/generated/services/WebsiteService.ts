@@ -23,7 +23,7 @@ export class WebsiteService {
     }> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/website/{websiteApiKey}',
+            url: '/{websiteApiKey}',
             path: {
                 'websiteApiKey': websiteApiKey,
             },
