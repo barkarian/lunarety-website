@@ -10,6 +10,7 @@
     "generate-api": "openapi --input http://localhost:3000/api/external/website/swagger --output src/lib/api/generated --client fetch"
   },
   "dependencies": {
+    "@payloadcms/richtext-lexical": "^3.65.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-popover": "^1.1.15",

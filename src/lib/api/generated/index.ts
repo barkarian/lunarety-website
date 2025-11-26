@@ -7,10 +7,16 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { AvailabilityMedia } from './models/AvailabilityMedia';
+export type { AvailabilityProperty } from './models/AvailabilityProperty';
+export type { AvailabilityPropertyContent } from './models/AvailabilityPropertyContent';
+export type { AvailabilityRoom } from './models/AvailabilityRoom';
 export type { bookingId } from './models/bookingId';
 export type { ErrorResponse } from './models/ErrorResponse';
 export type { PerformanceMetrics } from './models/PerformanceMetrics';
+export { RichText } from './models/RichText';
 export type { RoomOccupancy } from './models/RoomOccupancy';
+export type { RoomPrice } from './models/RoomPrice';
 export type { websiteApiKey } from './models/websiteApiKey';
 export { WebsiteType } from './models/WebsiteType';
 

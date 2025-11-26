@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { AvailabilityProperty } from '../models/AvailabilityProperty';
 import type { PerformanceMetrics } from '../models/PerformanceMetrics';
 import type { RoomOccupancy } from '../models/RoomOccupancy';
 import type { WebsiteType } from '../models/WebsiteType';
@@ -38,7 +39,7 @@ export class AvailabilityService {
             propertyIds?: Array<number>;
         },
     ): CancelablePromise<{
-        properties: Array<Record<string, any>>;
+        properties: Array<AvailabilityProperty>;
         totalDocs: number;
         performance: PerformanceMetrics;
     }> {
