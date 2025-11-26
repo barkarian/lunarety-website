@@ -11,6 +11,8 @@ import {
   InfoIcon,
   ClockIcon,
   ExternalLinkIcon,
+  PlusIcon,
+  MinusIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -159,6 +161,101 @@ export function PropertyDetails({
     fetchProperty();
   }, [fetchProperty]);
 
+  // Auto-select optimal room combination based on search params
+  React.useEffect(() => {
+    if (!property?.rooms || property.rooms.length === 0 || rooms.length === 0) return;
+    
+    // Only auto-select if no rooms are currently selected
+    if (selectedRooms.length > 0) return;
+
+    const requestedRoomCount = rooms.length;
+    
+    // Find all valid room options that can accommodate the guests
+    type RoomOption = {
+      roomId: string;
+      price: RoomPrice;
+      availUnits: number;
+      isRequestOnly: boolean;
+    };
+    
+    const validOptions: RoomOption[] = [];
+    
+    for (const room of property.rooms) {
+      const availUnits = room.availUnits || 0;
+      if (availUnits === 0) continue;
+      
+      // Check each price option for this room
+      const prices = room.prices || [];
+      if (prices.length > 0) {
+        for (const price of prices) {
+          // Check if this price option can accommodate any of the requested rooms
+          const canAccommodate = rooms.some(
+            (r) => price.adults >= r.adults && (price.children || 0) >= r.children
+          );
+          if (canAccommodate) {
+            validOptions.push({
+              roomId: room.id,
+              price,
+              availUnits,
+              isRequestOnly: price.price === 0,
+            });
+          }
+        }
+      } else {
+        // Room without prices - request only
+        const canAccommodate = rooms.some(
+          (r) => (room.maxAdults || room.maxGuests) >= r.adults && 
+                 (room.maxChildren || room.maxGuests) >= r.children
+        );
+        if (canAccommodate) {
+          validOptions.push({
+            roomId: room.id,
+            price: { adults: room.maxAdults || 2, children: 0, price: 0 },
+            availUnits,
+            isRequestOnly: true,
+          });
+        }
+      }
+    }
+    
+    if (validOptions.length === 0) return;
+    
+    // Sort options: prefer non-request-only rooms, then by price (ascending)
+    validOptions.sort((a, b) => {
+      // Request-only rooms should come last
+      if (a.isRequestOnly !== b.isRequestOnly) {
+        return a.isRequestOnly ? 1 : -1;
+      }
+      // Sort by price ascending
+      return a.price.price - b.price.price;
+    });
+    
+    // Find the best single room that can accommodate all requested rooms
+    // (if it has enough availUnits)
+    const bestSingleRoom = validOptions.find((opt) => opt.availUnits >= requestedRoomCount);
+    
+    if (bestSingleRoom) {
+      // Select this room with the requested quantity
+      setSelectedRooms([{
+        roomId: bestSingleRoom.roomId,
+        quantity: requestedRoomCount,
+        selectedPrice: bestSingleRoom.price,
+        isRequestOnly: bestSingleRoom.isRequestOnly,
+      }]);
+    } else {
+      // Fall back to selecting the best available option with quantity 1
+      const best = validOptions[0];
+      if (best) {
+        setSelectedRooms([{
+          roomId: best.roomId,
+          quantity: 1,
+          selectedPrice: best.price,
+          isRequestOnly: best.isRequestOnly,
+        }]);
+      }
+    }
+  }, [property, rooms, selectedRooms.length]);
+
   // Handle date/room changes
   const handleDateChange = (range: DateRangeNumber | undefined) => {
     setDateRange(range);
@@ -198,12 +295,30 @@ export function PropertyDetails({
     });
   };
 
+  // Update room quantity
+  const updateRoomQuantity = (roomId: string, delta: number, maxUnits: number) => {
+    setSelectedRooms((prev) => {
+      return prev.map((r) => {
+        if (r.roomId === roomId) {
+          const newQuantity = Math.max(1, Math.min(maxUnits, r.quantity + delta));
+          return { ...r, quantity: newQuantity };
+        }
+        return r;
+      });
+    });
+  };
+
   const hasRequestOnlyRooms = selectedRooms.some((r) => r.isRequestOnly);
 
   const nights =
     dateRange?.from && dateRange?.to
       ? calculateNights(dateRange.from, dateRange.to)
       : 0;
+
+  // Calculate total number of rooms (accounting for quantities)
+  const totalRoomCount = React.useMemo(() => {
+    return selectedRooms.reduce((total, sr) => total + sr.quantity, 0);
+  }, [selectedRooms]);
 
   const totalPrice = React.useMemo(() => {
     if (!property?.rooms) return 0;
@@ -240,10 +355,21 @@ export function PropertyDetails({
     setIsBooking(true);
 
     try {
-      const totalGuests = rooms.reduce(
-        (acc, room) => acc + room.adults + room.children,
-        0
-      );
+      // Calculate total guests based on selected rooms and their quantities
+      const totalGuests = selectedRooms.reduce((acc, sr) => {
+        const adults = sr.selectedPrice?.adults || 2;
+        const children = sr.selectedPrice?.children || 0;
+        return acc + (adults + children) * sr.quantity;
+      }, 0);
+
+      // Expand rooms based on quantity (e.g., if quantity is 2, we need 2 entries)
+      const expandedRooms = selectedRooms.flatMap((sr) => {
+        return Array.from({ length: sr.quantity }, () => ({
+          roomId: parseInt(sr.roomId, 10) || 0,
+          adults: sr.selectedPrice?.adults || rooms[0]?.adults || 2,
+          children: sr.selectedPrice?.children || rooms[0]?.children || 0,
+        }));
+      });
 
       const result = await createBooking({
         property: property.id,
@@ -255,13 +381,7 @@ export function PropertyDetails({
         guests: totalGuests,
         totalPrice,
         status: "pending",
-        rooms: selectedRooms.map((sr) => {
-          return {
-            roomId: parseInt(sr.roomId, 10) || 0,
-            adults: sr.selectedPrice?.adults || rooms[0]?.adults || 2,
-            children: sr.selectedPrice?.children || rooms[0]?.children || 0,
-          };
-        }),
+        rooms: expandedRooms,
       });
 
       if (result.booking?.id) {
@@ -432,6 +552,9 @@ export function PropertyDetails({
                       onSelectPrice={(price, isRequestOnly) =>
                         selectRoom(room.id, price, isRequestOnly)
                       }
+                      onUpdateQuantity={(delta) =>
+                        updateRoomQuantity(room.id, delta, room.availUnits || 1)
+                      }
                       onShowDetails={() => setSelectedRoomForModal(room)}
                     />
                   );
@@ -476,15 +599,27 @@ export function PropertyDetails({
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
+                        {/* Show breakdown of selected rooms */}
+                        {selectedRooms.map((sr) => {
+                          const room = property.rooms?.find(r => r.id === sr.roomId);
+                          if (!room) return null;
+                          return (
+                            <div key={sr.roomId} className="flex justify-between text-sm">
+                              <span className="text-muted-foreground truncate max-w-[180px]">
+                                {sr.quantity > 1 && (
+                                  <span className="font-medium text-foreground">{sr.quantity}× </span>
+                                )}
+                                {room.name}
+                              </span>
+                              <span className="font-medium">
+                                {sr.selectedPrice ? formatCurrency(sr.selectedPrice.price * sr.quantity, property.currency) : '—'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div className="flex justify-between text-sm pt-1">
                           <span className="text-muted-foreground">
-                            {selectedRooms.length} room
-                            {selectedRooms.length !== 1 ? "s" : ""} × {nights}{" "}
-                            night
-                            {nights !== 1 ? "s" : ""}
-                          </span>
-                          <span className="font-medium">
-                            {formatCurrency(totalPrice, property.currency)}
+                            {totalRoomCount} room{totalRoomCount !== 1 ? "s" : ""} × {nights} night{nights !== 1 ? "s" : ""}
                           </span>
                         </div>
                       </div>
@@ -709,12 +844,14 @@ function RoomCard({
   currency,
   selectedRoom,
   onSelectPrice,
+  onUpdateQuantity,
   onShowDetails,
 }: {
   room: Room;
   currency?: string;
   selectedRoom?: SelectedRoom;
   onSelectPrice: (price?: RoomPrice, isRequestOnly?: boolean) => void;
+  onUpdateQuantity: (delta: number) => void;
   onShowDetails: () => void;
 }) {
   // Use thumbnailUrl for grid view to save bandwidth
@@ -726,6 +863,8 @@ function RoomCard({
     room.longDescription?.root?.children?.length ||
     room.checkInDescription ||
     (room.images && room.images.length > 1);
+  const maxUnits = room.availUnits || 1;
+  const canSelectMultiple = maxUnits > 1 && selectedRoom;
 
   return (
     <Card className="overflow-hidden">
@@ -874,6 +1013,65 @@ function RoomCard({
               <Badge variant="destructive" className="mt-2">
                 Sold Out
               </Badge>
+            )}
+
+            {/* Quantity Selector - shown when room is selected and multiple units available */}
+            {canSelectMultiple && (
+              <div className="mt-4 pt-3 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Number of rooms:</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({maxUnits} available)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateQuantity(-1);
+                      }}
+                      disabled={selectedRoom.quantity <= 1}
+                    >
+                      <MinusIcon className="h-4 w-4" />
+                    </Button>
+                    <span className="w-8 text-center font-semibold text-lg">
+                      {selectedRoom.quantity}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateQuantity(1);
+                      }}
+                      disabled={selectedRoom.quantity >= maxUnits}
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                {selectedRoom.quantity > 1 && selectedRoom.selectedPrice && selectedRoom.selectedPrice.price > 0 && (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Total for {selectedRoom.quantity} rooms:{" "}
+                    <span className="font-semibold text-foreground">
+                      {formatCurrency(
+                        selectedRoom.selectedPrice.price * selectedRoom.quantity,
+                        currency
+                      )}
+                    </span>
+                  </div>
+                )}
+                {selectedRoom.quantity > 1 && (!selectedRoom.selectedPrice || selectedRoom.selectedPrice.price === 0) && (
+                  <div className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                    {selectedRoom.quantity} rooms selected — pricing on request
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
