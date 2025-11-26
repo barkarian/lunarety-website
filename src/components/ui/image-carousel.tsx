@@ -12,6 +12,8 @@ interface ImageCarouselProps {
   showThumbnails?: boolean;
   autoPlay?: boolean;
   autoPlayInterval?: number;
+  /** Fixed maximum height in pixels. When set, overrides aspect ratio for a consistent height. */
+  maxHeight?: number;
 }
 
 export function ImageCarousel({
@@ -21,6 +23,7 @@ export function ImageCarousel({
   showThumbnails = true,
   autoPlay = false,
   autoPlayInterval = 5000,
+  maxHeight,
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -30,6 +33,11 @@ export function ImageCarousel({
     square: "aspect-square",
     wide: "aspect-[16/9]",
   };
+
+  // When maxHeight is set, we limit the height while keeping aspect ratio
+  const containerStyle: React.CSSProperties = maxHeight
+    ? { maxHeight: `${maxHeight}px` }
+    : {};
 
   const goToPrevious = React.useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -76,6 +84,7 @@ export function ImageCarousel({
           aspectClasses[aspectRatio],
           className
         )}
+        style={containerStyle}
       >
         <span className="text-muted-foreground">No images available</span>
       </div>
@@ -86,15 +95,16 @@ export function ImageCarousel({
     return (
       <div
         className={cn(
-          "relative w-full rounded-xl overflow-hidden",
+          "relative w-full rounded-xl overflow-hidden bg-muted flex items-center justify-center",
           aspectClasses[aspectRatio],
           className
         )}
+        style={containerStyle}
       >
         <img
           src={images[0].url}
           alt={images[0].alt || "Image"}
-          className="w-full h-full object-cover"
+          className="max-w-full max-h-full object-contain"
         />
       </div>
     );
@@ -109,9 +119,10 @@ export function ImageCarousel({
       {/* Main Image */}
       <div
         className={cn(
-          "relative w-full rounded-xl overflow-hidden",
+          "relative w-full rounded-xl overflow-hidden bg-muted",
           aspectClasses[aspectRatio]
         )}
+        style={containerStyle}
       >
         <div
           className="flex transition-transform duration-500 ease-out h-full"
@@ -120,13 +131,13 @@ export function ImageCarousel({
           {images.map((image, index) => (
             <div
               key={index}
-              className="w-full h-full flex-shrink-0"
+              className="w-full h-full flex-shrink-0 flex items-center justify-center"
               style={{ minWidth: "100%" }}
             >
               <img
                 src={image.url}
                 alt={image.alt || `Image ${index + 1}`}
-                className="w-full h-full object-cover"
+                className="max-w-full max-h-full object-contain"
                 loading={index === 0 ? "eager" : "lazy"}
               />
             </div>

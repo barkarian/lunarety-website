@@ -313,13 +313,15 @@ export function PropertyDetails({
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* Image Carousel */}
-      <ImageCarousel
-        images={propertyImages}
-        aspectRatio="wide"
-        showThumbnails={true}
-        className="max-h-[500px]"
-      />
+      {/* Image Carousel - Full Width */}
+      <div className="w-full">
+        <ImageCarousel
+          images={propertyImages}
+          aspectRatio="wide"
+          showThumbnails={true}
+          maxHeight={450}
+        />
+      </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
