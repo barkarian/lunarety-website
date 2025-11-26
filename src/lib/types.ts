@@ -15,15 +15,45 @@ export interface DateRangeNumber {
   to?: number | undefined;
 }
 
+// Rich text type for Lexical content
+export interface RichTextContent {
+  root?: {
+    type?: string;
+    children?: Array<Record<string, unknown>>;
+    direction?: 'ltr' | 'rtl' | null;
+    format?: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+    indent?: number;
+    version?: number;
+  };
+}
+
+export interface PropertyContent {
+  shortDescription?: string;
+  longDescription?: RichTextContent;
+  location?: {
+    address?: string;
+    url?: string;
+  };
+}
+
+export interface MediaImage {
+  url: string;
+  thumbnailUrl?: string;
+  alt?: string;
+}
+
 export interface Property {
   id: number;
   channelPropertyId?: string;
   name: string;
   description?: string;
+  shortDescription?: string;
+  longDescription?: RichTextContent;
   address?: string;
   city?: string;
   country?: string;
-  images?: Array<{ url: string; alt?: string }>;
+  locationUrl?: string;
+  images?: MediaImage[];
   amenities?: string[];
   rating?: number;
   reviewCount?: number;
@@ -33,6 +63,7 @@ export interface Property {
   availability?: AvailabilityInfo;
   // New field from API - starting price for the property
   fromPrice?: number;
+  content?: PropertyContent;
 }
 
 export interface RoomPrice {
@@ -46,12 +77,15 @@ export interface Room {
   name: string;
   channelRoomId?: string;
   description?: string;
+  shortDescription?: string;
+  longDescription?: RichTextContent;
+  checkInDescription?: string;
   maxGuests: number;
   maxAdults?: number;
   maxChildren?: number;
   bedType?: string;
   amenities?: string[];
-  images?: Array<{ url: string; alt?: string }>;
+  images?: MediaImage[];
   pricePerNight?: number;
   available?: boolean;
   quantity?: number;

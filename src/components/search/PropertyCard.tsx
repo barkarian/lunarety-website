@@ -22,7 +22,8 @@ export function PropertyCard({
 }: PropertyCardProps) {
   const href = `/properties/${property.id}${searchParams ? `?${searchParams}` : ""}`;
 
-  const mainImage = property.images?.[0]?.url || "/placeholder-property.jpg";
+  // Use thumbnailUrl for grid view to save bandwidth
+  const mainImage = property.images?.[0]?.thumbnailUrl || property.images?.[0]?.url || "/placeholder-property.jpg";
   // Use fromPrice from API, fallback to minPrice or pricePerNight
   const fromPrice = property.fromPrice ?? property.availability?.minPrice ?? property.pricePerNight;
   const isRequestOnly = fromPrice === 0 || fromPrice === undefined;

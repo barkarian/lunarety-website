@@ -8,6 +8,9 @@ import {
   CheckIcon,
   UsersIcon,
   BedIcon,
+  InfoIcon,
+  ClockIcon,
+  ExternalLinkIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,8 +26,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { DateRangePicker } from "@/components/search/DateRangePicker";
 import { RoomSelector } from "@/components/search/RoomSelector";
+import { ImageCarousel } from "@/components/ui/image-carousel";
+import { RichText } from "@/components/RichText";
 import { getAvailability, createBooking } from "@/lib/actions/api";
 import {
   type Property,
@@ -38,6 +50,7 @@ import {
   formatCurrency,
   calculateNights,
 } from "@/lib/types";
+import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
 
 interface PropertyDetailsProps {
   propertyId: string;
@@ -66,17 +79,23 @@ export function PropertyDetails({
   const [property, setProperty] = React.useState<Property | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [showPropertyDescriptionModal, setShowPropertyDescriptionModal] =
+    React.useState(false);
+  const [selectedRoomForModal, setSelectedRoomForModal] =
+    React.useState<Room | null>(null);
 
   // Parse dates as YYYYMMDD numbers
-  const [dateRange, setDateRange] = React.useState<DateRangeNumber | undefined>(() => {
-    if (searchParams.from && searchParams.to) {
-      return {
-        from: parseInt(searchParams.from, 10),
-        to: parseInt(searchParams.to, 10),
-      };
+  const [dateRange, setDateRange] = React.useState<DateRangeNumber | undefined>(
+    () => {
+      if (searchParams.from && searchParams.to) {
+        return {
+          from: parseInt(searchParams.from, 10),
+          to: parseInt(searchParams.to, 10),
+        };
+      }
+      return { from: defaults.from, to: defaults.to };
     }
-    return { from: defaults.from, to: defaults.to };
-  });
+  );
 
   const [rooms, setRooms] = React.useState<RoomOccupancy[]>(() =>
     parseRooms(searchParams.rooms)
@@ -117,12 +136,13 @@ export function PropertyDetails({
 
     try {
       const result = await getAvailability({
-        from: dateRange.from, // YYYYMMDD format
-        to: dateRange.to, // YYYYMMDD format
+        from: dateRange.from,
+        to: dateRange.to,
         rooms,
         propertyIds: [parseInt(propertyId)],
       });
 
+      console.log({result});
       if (result.properties && result.properties.length > 0) {
         setProperty(result.properties[0]);
       } else {
@@ -155,18 +175,20 @@ export function PropertyDetails({
   };
 
   // Handle room selection with price option
-  const selectRoom = (roomId: string, selectedPrice?: RoomPrice, isRequestOnly?: boolean) => {
+  const selectRoom = (
+    roomId: string,
+    selectedPrice?: RoomPrice,
+    isRequestOnly?: boolean
+  ) => {
     setSelectedRooms((prev) => {
       const existing = prev.find((r) => r.roomId === roomId);
       if (existing) {
-        // If clicking the same option, deselect
         if (
           existing.selectedPrice?.adults === selectedPrice?.adults &&
           existing.selectedPrice?.children === selectedPrice?.children
         ) {
           return prev.filter((r) => r.roomId !== roomId);
         }
-        // Otherwise update the selection
         return prev.map((r) =>
           r.roomId === roomId ? { ...r, selectedPrice, isRequestOnly } : r
         );
@@ -176,33 +198,37 @@ export function PropertyDetails({
     });
   };
 
-  // Check if any selected room is request only
   const hasRequestOnlyRooms = selectedRooms.some((r) => r.isRequestOnly);
 
-  // Calculate total price
-  const nights = dateRange?.from && dateRange?.to 
-    ? calculateNights(dateRange.from, dateRange.to) 
-    : 0;
-  
+  const nights =
+    dateRange?.from && dateRange?.to
+      ? calculateNights(dateRange.from, dateRange.to)
+      : 0;
+
   const totalPrice = React.useMemo(() => {
     if (!property?.rooms) return 0;
 
     return selectedRooms.reduce((total, selected) => {
-      // Use the selected price option or fall back to room's totalPrice
       const price = selected.selectedPrice?.price || 0;
       return total + price * selected.quantity;
     }, 0);
   }, [selectedRooms, property]);
 
-  // Convert YYYYMMDD to YYYY-MM-DD string for booking API
   const formatDateForBooking = (dateNum: number): string => {
     const str = String(dateNum);
-    return `${str.substring(0, 4)}-${str.substring(4, 6)}-${str.substring(6, 8)}`;
+    return `${str.substring(0, 4)}-${str.substring(4, 6)}-${str.substring(
+      6,
+      8
+    )}`;
   };
 
-  // Handle booking
   const handleBooking = async () => {
-    if (!property || !dateRange?.from || !dateRange?.to || selectedRooms.length === 0) {
+    if (
+      !property ||
+      !dateRange?.from ||
+      !dateRange?.to ||
+      selectedRooms.length === 0
+    ) {
       return;
     }
 
@@ -280,29 +306,20 @@ export function PropertyDetails({
     );
   }
 
-  const mainImage = property.images?.[0]?.url || "/placeholder-property.jpg";
-  const galleryImages = property.images?.slice(1, 5) || [];
+  const propertyImages = property.images || [];
+  const hasLongDescription =
+    property.longDescription?.root?.children &&
+    property.longDescription.root.children.length > 0;
 
   return (
     <div className="space-y-8 animate-fade-in-up">
-      {/* Image Gallery */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div
-          className="aspect-[4/3] rounded-2xl bg-cover bg-center overflow-hidden"
-          style={{ backgroundImage: `url(${mainImage})` }}
-        />
-        {galleryImages.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
-            {galleryImages.map((img, i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-xl bg-cover bg-center overflow-hidden"
-                style={{ backgroundImage: `url(${img.url})` }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Image Carousel */}
+      <ImageCarousel
+        images={propertyImages}
+        aspectRatio="wide"
+        showThumbnails={true}
+        className="max-h-[500px]"
+      />
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -311,19 +328,36 @@ export function PropertyDetails({
           {/* Title & Location */}
           <div>
             <div className="flex items-start justify-between gap-4 mb-4">
-              <div>
-                <h1 className="text-3xl font-bold mb-2">{property.name}</h1>
-                {(property.city || property.country) && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPinIcon className="h-4 w-4" />
-                    <span>
-                      {[property.city, property.country]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </span>
-                  </div>
-                )}
+              <div className="flex-1">
+                <h1 className="text-3xl font-bold mb-3">{property.name}</h1>
+
+                {/* Location with URL */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  {(property.city || property.country || property.address) && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPinIcon className="h-4 w-4 flex-shrink-0" />
+                      <span>
+                        {[property.address, property.city, property.country]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </span>
+                    </div>
+                  )}
+
+                  {property.locationUrl && (
+                    <a
+                      href={property.locationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      <ExternalLinkIcon className="h-3.5 w-3.5" />
+                      View on map
+                    </a>
+                  )}
+                </div>
               </div>
+
               {property.rating && (
                 <div className="flex items-center gap-1.5 bg-accent rounded-full px-3 py-1.5">
                   <StarIcon className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -339,10 +373,25 @@ export function PropertyDetails({
               )}
             </div>
 
-            {property.description && (
-              <p className="text-muted-foreground leading-relaxed">
-                {property.description}
-              </p>
+            {/* Short Description + Info Icon */}
+            {(property.shortDescription || property.description) && (
+              <div className="flex items-start gap-3">
+                <p className="text-muted-foreground leading-relaxed flex-1">
+                  {property.shortDescription || property.description}
+                </p>
+
+                {hasLongDescription && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowPropertyDescriptionModal(true)}
+                    className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-primary/10"
+                    aria-label="View full description"
+                  >
+                    <InfoIcon className="h-4 w-4 text-primary" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
@@ -352,10 +401,7 @@ export function PropertyDetails({
               <h2 className="text-xl font-semibold mb-4">Amenities</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {property.amenities.map((amenity) => (
-                  <div
-                    key={amenity}
-                    className="flex items-center gap-2 text-sm"
-                  >
+                  <div key={amenity} className="flex items-center gap-2 text-sm">
                     <CheckIcon className="h-4 w-4 text-primary" />
                     <span>{amenity}</span>
                   </div>
@@ -384,6 +430,7 @@ export function PropertyDetails({
                       onSelectPrice={(price, isRequestOnly) =>
                         selectRoom(room.id, price, isRequestOnly)
                       }
+                      onShowDetails={() => setSelectedRoomForModal(room)}
                     />
                   );
                 })
@@ -420,7 +467,8 @@ export function PropertyDetails({
                   {hasRequestOnlyRooms ? (
                     <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                       <p className="text-sm text-amber-800 dark:text-amber-200">
-                        Price not available for this selection. Submit a request and we&apos;ll get back to you with pricing.
+                        Price not available for this selection. Submit a request
+                        and we&apos;ll get back to you with pricing.
                       </p>
                     </div>
                   ) : (
@@ -429,7 +477,8 @@ export function PropertyDetails({
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">
                             {selectedRooms.length} room
-                            {selectedRooms.length !== 1 ? "s" : ""} × {nights} night
+                            {selectedRooms.length !== 1 ? "s" : ""} × {nights}{" "}
+                            night
                             {nights !== 1 ? "s" : ""}
                           </span>
                           <span className="font-medium">
@@ -527,6 +576,128 @@ export function PropertyDetails({
           </Card>
         </div>
       </div>
+
+      {/* Property Long Description Modal */}
+      <Dialog
+        open={showPropertyDescriptionModal}
+        onOpenChange={setShowPropertyDescriptionModal}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{property.name}</DialogTitle>
+            <DialogDescription>Full property description</DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            {property.longDescription && (
+              <RichText
+                data={property.longDescription as unknown as SerializedEditorState}
+                className="prose prose-sm dark:prose-invert max-w-none"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Room Details Modal */}
+      <Dialog
+        open={!!selectedRoomForModal}
+        onOpenChange={(open) => !open && setSelectedRoomForModal(null)}
+      >
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          {selectedRoomForModal && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">
+                  {selectedRoomForModal.name}
+                </DialogTitle>
+                <DialogDescription>Room details and information</DialogDescription>
+              </DialogHeader>
+
+              {/* Room Images Carousel */}
+              {selectedRoomForModal.images &&
+                selectedRoomForModal.images.length > 0 && (
+                  <div className="mt-4">
+                    <ImageCarousel
+                      images={selectedRoomForModal.images}
+                      aspectRatio="video"
+                      showThumbnails={selectedRoomForModal.images.length > 3}
+                    />
+                  </div>
+                )}
+
+              {/* Room Info Grid */}
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <RoomInfoCard
+                  icon={<UsersIcon className="h-5 w-5" />}
+                  label="Max Guests"
+                  value={selectedRoomForModal.maxGuests?.toString() || "—"}
+                />
+                <RoomInfoCard
+                  icon={<UsersIcon className="h-5 w-5" />}
+                  label="Max Adults"
+                  value={selectedRoomForModal.maxAdults?.toString() || "—"}
+                />
+                <RoomInfoCard
+                  icon={<UsersIcon className="h-5 w-5" />}
+                  label="Max Children"
+                  value={selectedRoomForModal.maxChildren?.toString() || "—"}
+                />
+                {selectedRoomForModal.bedType && (
+                  <RoomInfoCard
+                    icon={<BedIcon className="h-5 w-5" />}
+                    label="Bed Type"
+                    value={selectedRoomForModal.bedType}
+                  />
+                )}
+              </div>
+
+              {/* Check-in Description */}
+              {selectedRoomForModal.checkInDescription && (
+                <div className="mt-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ClockIcon className="h-4 w-4 text-primary" />
+                    <h4 className="font-semibold">Check-in Information</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {selectedRoomForModal.checkInDescription}
+                  </p>
+                </div>
+              )}
+
+              {/* Long Description */}
+              {selectedRoomForModal.longDescription && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Full Description</h4>
+                    <RichText
+                      data={
+                        selectedRoomForModal.longDescription as unknown as SerializedEditorState
+                      }
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                    />
+                  </div>
+                )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function RoomInfoCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center p-3 bg-accent/50 rounded-lg text-center">
+      <div className="text-primary mb-1">{icon}</div>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-semibold">{value}</span>
     </div>
   );
 }
@@ -536,40 +707,69 @@ function RoomCard({
   currency,
   selectedRoom,
   onSelectPrice,
+  onShowDetails,
 }: {
   room: Room;
   currency?: string;
   selectedRoom?: SelectedRoom;
   onSelectPrice: (price?: RoomPrice, isRequestOnly?: boolean) => void;
+  onShowDetails: () => void;
 }) {
-  const roomImage = room.images?.[0]?.url || "/placeholder-room.jpg";
-  const isAvailable = (room.availUnits || 0) > 0 || (room.availUnitsOfThisType || 0) > 0;
+  // Use thumbnailUrl for grid view to save bandwidth
+  const roomImage = room.images?.[0]?.thumbnailUrl || room.images?.[0]?.url || "/placeholder-room.jpg";
+  const isAvailable =
+    (room.availUnits || 0) > 0 || (room.availUnitsOfThisType || 0) > 0;
   const prices = room.prices || [];
+  const hasRoomDetails =
+    room.longDescription?.root?.children?.length ||
+    room.checkInDescription ||
+    (room.images && room.images.length > 1);
 
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col sm:flex-row">
         {/* Room Image */}
         <div
-          className="sm:w-48 aspect-video sm:aspect-square bg-cover bg-center flex-shrink-0"
+          className="sm:w-48 aspect-video sm:aspect-square bg-cover bg-center flex-shrink-0 relative group cursor-pointer"
           style={{ backgroundImage: `url(${roomImage})` }}
-        />
+          onClick={onShowDetails}
+        >
+          {room.images && room.images.length > 1 && (
+            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+              +{room.images.length - 1} photos
+            </div>
+          )}
+        </div>
 
         {/* Room Info */}
         <div className="flex-1 p-4 flex flex-col">
           <div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="font-semibold text-lg">{room.name}</h3>
-              {selectedRoom && (
-                <Badge className="bg-primary text-primary-foreground">
-                  Selected
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {hasRoomDetails && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onShowDetails}
+                    className="h-8 w-8 rounded-full hover:bg-primary/10"
+                    aria-label="View room details"
+                  >
+                    <InfoIcon className="h-4 w-4 text-primary" />
+                  </Button>
+                )}
+                {selectedRoom && (
+                  <Badge className="bg-primary text-primary-foreground">
+                    Selected
+                  </Badge>
+                )}
+              </div>
             </div>
 
-            {room.description && (
+            {/* Short Description */}
+            {(room.shortDescription || room.description) && (
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                {room.description}
+                {room.shortDescription || room.description}
               </p>
             )}
 
@@ -595,27 +795,29 @@ function RoomCard({
 
           {/* Pricing Options */}
           <div className="mt-auto pt-3 border-t space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Select occupancy:</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Select occupancy:
+            </p>
             <div className="flex flex-wrap gap-2">
               {prices.length > 0 ? (
                 prices.map((priceOption, idx) => {
                   const isSelected =
                     selectedRoom?.selectedPrice?.adults === priceOption.adults &&
-                    selectedRoom?.selectedPrice?.children === priceOption.children;
+                    selectedRoom?.selectedPrice?.children ===
+                      priceOption.children;
                   const isRequestOnly = priceOption.price === 0;
 
                   return (
                     <button
                       key={idx}
-                      onClick={() =>
-                        onSelectPrice(priceOption, isRequestOnly)
-                      }
+                      onClick={() => onSelectPrice(priceOption, isRequestOnly)}
                       disabled={!isAvailable}
                       className={`
                         flex flex-col items-center px-4 py-2 rounded-lg border transition-all
-                        ${isSelected
-                          ? "border-primary bg-primary/10 ring-2 ring-primary"
-                          : "border-border hover:border-primary/50 hover:bg-accent"
+                        ${
+                          isSelected
+                            ? "border-primary bg-primary/10 ring-2 ring-primary"
+                            : "border-border hover:border-primary/50 hover:bg-accent"
                         }
                         ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                       `}
@@ -623,7 +825,8 @@ function RoomCard({
                       <div className="flex items-center gap-1 text-sm">
                         <UsersIcon className="h-3.5 w-3.5" />
                         <span>
-                          {priceOption.adults} adult{priceOption.adults !== 1 ? "s" : ""}
+                          {priceOption.adults} adult
+                          {priceOption.adults !== 1 ? "s" : ""}
                           {priceOption.children > 0 &&
                             `, ${priceOption.children} child${priceOption.children !== 1 ? "ren" : ""}`}
                         </span>
@@ -641,15 +844,15 @@ function RoomCard({
                   );
                 })
               ) : (
-                // No prices available - request only
                 <button
                   onClick={() => onSelectPrice(undefined, true)}
                   disabled={!isAvailable}
                   className={`
                     flex flex-col items-center px-4 py-2 rounded-lg border transition-all
-                    ${selectedRoom?.isRequestOnly
-                      ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30 ring-2 ring-amber-500"
-                      : "border-border hover:border-amber-500/50 hover:bg-accent"
+                    ${
+                      selectedRoom?.isRequestOnly
+                        ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30 ring-2 ring-amber-500"
+                        : "border-border hover:border-amber-500/50 hover:bg-accent"
                     }
                     ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                   `}
@@ -666,7 +869,9 @@ function RoomCard({
             </div>
 
             {!isAvailable && (
-              <Badge variant="destructive" className="mt-2">Sold Out</Badge>
+              <Badge variant="destructive" className="mt-2">
+                Sold Out
+              </Badge>
             )}
           </div>
         </div>
@@ -678,17 +883,9 @@ function RoomCard({
 function PropertyDetailsSkeleton() {
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="aspect-[4/3] rounded-2xl bg-muted animate-pulse" />
-        <div className="grid grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="aspect-square rounded-xl bg-muted animate-pulse"
-            />
-          ))}
-        </div>
-      </div>
+      {/* Carousel Skeleton */}
+      <div className="aspect-[16/9] max-h-[500px] rounded-xl bg-muted animate-pulse" />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <div className="h-10 w-3/4 bg-muted rounded animate-pulse" />

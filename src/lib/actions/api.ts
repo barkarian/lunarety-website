@@ -10,6 +10,18 @@ import type { RoomOccupancy } from "@/lib/api/generated/models/RoomOccupancy";
 import { WebsiteType } from "@/lib/api/generated/models/WebsiteType";
 
 const WEBSITE_API_KEY = process.env.WEBSITE_API_KEY!;
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
+
+// Helper to resolve image URLs - prefix relative URLs with API base
+function resolveImageUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  // If it's already an absolute URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If it's a relative URL, prefix with API base
+  return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 interface AvailabilityParams {
   from: number; // YYYYMMDD format (e.g., 20251231)
@@ -58,43 +70,83 @@ export async function getAvailability(params: AvailabilityParams) {
     
     const properties = (rawProperties as Array<Record<string, unknown>>).map((prop) => {
       const rooms = prop.rooms as Array<Record<string, unknown>> | undefined;
+      const content = (prop.content || {}) as Record<string, unknown>;
+      const location = (content.location || {}) as Record<string, unknown>;
+      const propMedia = (content.media || prop.images || []) as Array<Record<string, unknown>>;
       
       return {
         id: prop.id as number,
         channelPropertyId: prop.channelPropertyId as string | undefined,
-        name: (prop.name || `Property ${prop.id}`) as string,
-        description: prop.description as string | undefined,
-        address: prop.address as string | undefined,
+        name: (prop.name || prop.title || `Property ${prop.id}`) as string,
+        description: (content.shortDescription || prop.description) as string | undefined,
+        shortDescription: content.shortDescription as string | undefined,
+        longDescription: content.longDescription as Record<string, unknown> | undefined,
+        address: (location.address || prop.address) as string | undefined,
         city: prop.city as string | undefined,
         country: prop.country as string | undefined,
-        images: prop.images as Array<{ url: string; alt?: string }> | undefined,
+        locationUrl: location.url as string | undefined,
+        images: propMedia.map((m) => ({ 
+          url: resolveImageUrl(m.url as string), 
+          thumbnailUrl: resolveImageUrl(m.thumbnailURL as string) || resolveImageUrl(m.url as string),
+          alt: m.alt as string | undefined 
+        })),
         amenities: prop.amenities as string[] | undefined,
         rating: prop.rating as number | undefined,
         reviewCount: prop.reviewCount as number | undefined,
         pricePerNight: prop.fromPrice as number | undefined,
         currency: (prop.currency || "EUR") as string,
         fromPrice: prop.fromPrice as number | undefined,
+        content: {
+          shortDescription: content.shortDescription as string | undefined,
+          longDescription: content.longDescription as Record<string, unknown> | undefined,
+          location: {
+            address: location.address as string | undefined,
+            url: location.url as string | undefined,
+          },
+        },
         rooms: rooms?.map((room) => {
+          // Check for nested roomContent (legacy/custom format) or direct properties (API spec format)
           const roomContent = (room.roomContent || {}) as Record<string, unknown>;
           const config = (room.config || {}) as Record<string, { max?: number; maxAdults?: number; maxChildren?: number }>;
           const rates = (room.rates || {}) as Record<string, unknown>;
           const availability = (room.availability || {}) as Record<string, unknown>;
-          const media = (roomContent.media || []) as Array<Record<string, unknown>>;
+          
+          // Media can be on roomContent.media or directly on room.images
+          const nestedMedia = (roomContent.media || []) as Array<Record<string, unknown>>;
+          const directImages = (room.images || []) as Array<Record<string, unknown>>;
+          const media = nestedMedia.length > 0 ? nestedMedia : directImages;
+          
+          // Get description - check nested first, then direct
+          const shortDesc = (roomContent.shortDescription || room.description) as string | undefined;
+          const longDesc = (roomContent.longDescription || room.longDescription) as Record<string, unknown> | undefined;
+          const checkInDesc = (roomContent.checkInDescription || room.checkInDescription) as string | undefined;
+          
+          // Get max guests - check config first, then direct properties
+          const maxGuests = (config.pax?.max || room.maxGuests || 2) as number;
+          const maxAdults = (config.pax?.maxAdults || room.maxAdults) as number | undefined;
+          const maxChildren = (config.pax?.maxChildren || room.maxChildren) as number | undefined;
           
           return {
             id: room.id as string,
             name: (room.roomName || room.name) as string,
             channelRoomId: room.channelRoomId as string | undefined,
-            description: (roomContent.shortDescription || roomContent.longDescription) as string | undefined,
-            maxGuests: (config.pax?.max || 2) as number,
-            maxAdults: config.pax?.maxAdults as number | undefined,
-            maxChildren: config.pax?.maxChildren as number | undefined,
-            images: media.map((m) => ({ url: m.url as string, alt: m.alt as string | undefined })),
-            // Rates info
-            availUnitsOfThisType: rates.availUnitsOfThisType as number | undefined,
-            totalPrice: rates.totalPrice as number | undefined,
-            prices: rates.prices as Array<{ adults: number; children: number; price: number }> | undefined,
-            availUnits: availability.availUnits as number | undefined,
+            description: shortDesc,
+            shortDescription: shortDesc,
+            longDescription: longDesc,
+            checkInDescription: checkInDesc,
+            maxGuests,
+            maxAdults,
+            maxChildren,
+            images: media.map((m) => ({ 
+              url: resolveImageUrl(m.url as string), 
+              thumbnailUrl: resolveImageUrl(m.thumbnailURL as string) || resolveImageUrl(m.url as string),
+              alt: m.alt as string | undefined 
+            })),
+            // Rates info - check nested rates or direct properties
+            availUnitsOfThisType: (rates.availUnitsOfThisType || room.availUnitsOfThisType) as number | undefined,
+            totalPrice: (rates.totalPrice || room.totalPrice) as number | undefined,
+            prices: (rates.prices || room.prices) as Array<{ adults: number; children: number; price: number }> | undefined,
+            availUnits: (availability.availUnits || room.availUnits) as number | undefined,
           };
         }) || [],
       };
