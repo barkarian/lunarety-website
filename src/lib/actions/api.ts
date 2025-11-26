@@ -10,7 +10,7 @@ import type { RoomOccupancy } from "@/lib/api/generated/models/RoomOccupancy";
 import { WebsiteType } from "@/lib/api/generated/models/WebsiteType";
 
 const WEBSITE_API_KEY = process.env.WEBSITE_API_KEY!;
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.LUNARETY_URL || 'http://localhost:3000';
 
 // Helper to resolve image URLs - prefix relative URLs with API base
 function resolveImageUrl(url: string | undefined | null): string {
