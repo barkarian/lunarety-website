@@ -30,13 +30,13 @@ import {
   type Property,
   type Room,
   type RoomOccupancy,
+  type RoomPrice,
   type DateRangeNumber,
   parseRooms,
   serializeRooms,
   getDefaultDates,
   formatCurrency,
   calculateNights,
-  numberToDate,
 } from "@/lib/types";
 
 interface PropertyDetailsProps {
@@ -49,8 +49,10 @@ interface PropertyDetailsProps {
 }
 
 interface SelectedRoom {
-  roomId: number;
+  roomId: string;
   quantity: number;
+  selectedPrice?: RoomPrice;
+  isRequestOnly?: boolean;
 }
 
 export function PropertyDetails({
@@ -152,17 +154,30 @@ export function PropertyDetails({
     updateUrl(dateRange, newRooms);
   };
 
-  // Handle room selection
-  const toggleRoomSelection = (roomId: number) => {
+  // Handle room selection with price option
+  const selectRoom = (roomId: string, selectedPrice?: RoomPrice, isRequestOnly?: boolean) => {
     setSelectedRooms((prev) => {
       const existing = prev.find((r) => r.roomId === roomId);
       if (existing) {
-        return prev.filter((r) => r.roomId !== roomId);
+        // If clicking the same option, deselect
+        if (
+          existing.selectedPrice?.adults === selectedPrice?.adults &&
+          existing.selectedPrice?.children === selectedPrice?.children
+        ) {
+          return prev.filter((r) => r.roomId !== roomId);
+        }
+        // Otherwise update the selection
+        return prev.map((r) =>
+          r.roomId === roomId ? { ...r, selectedPrice, isRequestOnly } : r
+        );
       } else {
-        return [...prev, { roomId, quantity: 1 }];
+        return [...prev, { roomId, quantity: 1, selectedPrice, isRequestOnly }];
       }
     });
   };
+
+  // Check if any selected room is request only
+  const hasRequestOnlyRooms = selectedRooms.some((r) => r.isRequestOnly);
 
   // Calculate total price
   const nights = dateRange?.from && dateRange?.to 
@@ -173,14 +188,11 @@ export function PropertyDetails({
     if (!property?.rooms) return 0;
 
     return selectedRooms.reduce((total, selected) => {
-      const room = property.rooms?.find((r) => r.id === selected.roomId);
-      const roomAvailability = property.availability?.rooms?.find(
-        (r) => r.roomId === selected.roomId
-      );
-      const pricePerNight = roomAvailability?.price || room?.pricePerNight || 0;
-      return total + pricePerNight * nights * selected.quantity;
+      // Use the selected price option or fall back to room's totalPrice
+      const price = selected.selectedPrice?.price || 0;
+      return total + price * selected.quantity;
     }, 0);
-  }, [selectedRooms, property, nights]);
+  }, [selectedRooms, property]);
 
   // Convert YYYYMMDD to YYYY-MM-DD string for booking API
   const formatDateForBooking = (dateNum: number): string => {
@@ -219,9 +231,9 @@ export function PropertyDetails({
         status: "pending",
         rooms: selectedRooms.map((sr) => {
           return {
-            roomId: sr.roomId,
-            adults: rooms[0]?.adults || 2,
-            children: rooms[0]?.children || 0,
+            roomId: parseInt(sr.roomId, 10) || 0,
+            adults: sr.selectedPrice?.adults || rooms[0]?.adults || 2,
+            children: sr.selectedPrice?.children || rooms[0]?.children || 0,
           };
         }),
       });
@@ -359,21 +371,22 @@ export function PropertyDetails({
             <h2 className="text-xl font-semibold mb-4">Available Rooms</h2>
             <div className="space-y-4">
               {property.rooms && property.rooms.length > 0 ? (
-                property.rooms.map((room) => (
-                  <RoomCard
-                    key={room.id}
-                    room={room}
-                    nights={nights}
-                    currency={property.currency}
-                    availability={property.availability?.rooms?.find(
-                      (r) => r.roomId === room.id
-                    )}
-                    isSelected={selectedRooms.some(
-                      (sr) => sr.roomId === room.id
-                    )}
-                    onToggle={() => toggleRoomSelection(room.id)}
-                  />
-                ))
+                property.rooms.map((room) => {
+                  const selectedRoom = selectedRooms.find(
+                    (sr) => sr.roomId === room.id
+                  );
+                  return (
+                    <RoomCard
+                      key={room.id}
+                      room={room}
+                      currency={property.currency}
+                      selectedRoom={selectedRoom}
+                      onSelectPrice={(price, isRequestOnly) =>
+                        selectRoom(room.id, price, isRequestOnly)
+                      }
+                    />
+                  );
+                })
               ) : (
                 <p className="text-muted-foreground">
                   No rooms available for the selected dates.
@@ -404,27 +417,37 @@ export function PropertyDetails({
                 <>
                   <Separator />
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {selectedRooms.length} room
-                        {selectedRooms.length !== 1 ? "s" : ""} × {nights} night
-                        {nights !== 1 ? "s" : ""}
-                      </span>
-                      <span className="font-medium">
-                        {formatCurrency(totalPrice, property.currency)}
-                      </span>
+                  {hasRequestOnlyRooms ? (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        Price not available for this selection. Submit a request and we&apos;ll get back to you with pricing.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {selectedRooms.length} room
+                            {selectedRooms.length !== 1 ? "s" : ""} × {nights} night
+                            {nights !== 1 ? "s" : ""}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(totalPrice, property.currency)}
+                          </span>
+                        </div>
+                      </div>
 
-                  <Separator />
+                      <Separator />
 
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold">Total</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {formatCurrency(totalPrice, property.currency)}
-                    </span>
-                  </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold">Total</span>
+                        <span className="text-2xl font-bold text-primary">
+                          {formatCurrency(totalPrice, property.currency)}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 
@@ -472,8 +495,9 @@ export function PropertyDetails({
                   className="w-full"
                   size="lg"
                   onClick={() => setShowBookingForm(true)}
+                  variant={hasRequestOnlyRooms ? "outline" : "default"}
                 >
-                  Continue to Booking
+                  {hasRequestOnlyRooms ? "Submit Request" : "Continue to Booking"}
                 </Button>
               ) : (
                 <>
@@ -482,11 +506,16 @@ export function PropertyDetails({
                     size="lg"
                     onClick={handleBooking}
                     disabled={isBooking || !guestName || !guestEmail}
+                    variant={hasRequestOnlyRooms ? "outline" : "default"}
                   >
-                    {isBooking ? "Processing..." : "Complete Booking"}
+                    {isBooking
+                      ? "Processing..."
+                      : hasRequestOnlyRooms
+                        ? "Send Request"
+                        : "Complete Booking"}
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     className="w-full"
                     onClick={() => setShowBookingForm(false)}
                   >
@@ -504,35 +533,21 @@ export function PropertyDetails({
 
 function RoomCard({
   room,
-  nights,
   currency,
-  availability,
-  isSelected,
-  onToggle,
+  selectedRoom,
+  onSelectPrice,
 }: {
   room: Room;
-  nights: number;
   currency?: string;
-  availability?: { available: boolean; price: number; availableCount: number };
-  isSelected: boolean;
-  onToggle: () => void;
+  selectedRoom?: SelectedRoom;
+  onSelectPrice: (price?: RoomPrice, isRequestOnly?: boolean) => void;
 }) {
-  const pricePerNight = availability?.price || room.pricePerNight || 0;
-  const totalPrice = pricePerNight * nights;
-  const isAvailable = availability?.available !== false && (availability?.availableCount || 0) > 0;
   const roomImage = room.images?.[0]?.url || "/placeholder-room.jpg";
+  const isAvailable = (room.availUnits || 0) > 0 || (room.availUnitsOfThisType || 0) > 0;
+  const prices = room.prices || [];
 
   return (
-    <Card
-      className={`overflow-hidden transition-all cursor-pointer ${
-        isSelected
-          ? "ring-2 ring-primary border-primary"
-          : isAvailable
-            ? "hover:shadow-md"
-            : "opacity-60"
-      }`}
-      onClick={() => isAvailable && onToggle()}
-    >
+    <Card className="overflow-hidden">
       <div className="flex flex-col sm:flex-row">
         {/* Room Image */}
         <div
@@ -541,11 +556,11 @@ function RoomCard({
         />
 
         {/* Room Info */}
-        <div className="flex-1 p-4 flex flex-col justify-between">
+        <div className="flex-1 p-4 flex flex-col">
           <div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h3 className="font-semibold text-lg">{room.name}</h3>
-              {isSelected && (
+              {selectedRoom && (
                 <Badge className="bg-primary text-primary-foreground">
                   Selected
                 </Badge>
@@ -558,7 +573,7 @@ function RoomCard({
               </p>
             )}
 
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
               <div className="flex items-center gap-1.5">
                 <UsersIcon className="h-4 w-4" />
                 <span>Up to {room.maxGuests} guests</span>
@@ -569,25 +584,89 @@ function RoomCard({
                   <span>{room.bedType}</span>
                 </div>
               )}
+              {room.availUnitsOfThisType && room.availUnitsOfThisType > 0 && (
+                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                  <CheckIcon className="h-4 w-4" />
+                  <span>{room.availUnitsOfThisType} available</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t flex items-end justify-between">
-            <div>
-              <span className="text-lg font-bold text-primary">
-                {formatCurrency(pricePerNight, currency)}
-              </span>
-              <span className="text-sm text-muted-foreground"> / night</span>
-              {nights > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {formatCurrency(totalPrice, currency)} total for {nights} night
-                  {nights !== 1 ? "s" : ""}
-                </p>
+          {/* Pricing Options */}
+          <div className="mt-auto pt-3 border-t space-y-2">
+            <p className="text-sm font-medium text-muted-foreground">Select occupancy:</p>
+            <div className="flex flex-wrap gap-2">
+              {prices.length > 0 ? (
+                prices.map((priceOption, idx) => {
+                  const isSelected =
+                    selectedRoom?.selectedPrice?.adults === priceOption.adults &&
+                    selectedRoom?.selectedPrice?.children === priceOption.children;
+                  const isRequestOnly = priceOption.price === 0;
+
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() =>
+                        onSelectPrice(priceOption, isRequestOnly)
+                      }
+                      disabled={!isAvailable}
+                      className={`
+                        flex flex-col items-center px-4 py-2 rounded-lg border transition-all
+                        ${isSelected
+                          ? "border-primary bg-primary/10 ring-2 ring-primary"
+                          : "border-border hover:border-primary/50 hover:bg-accent"
+                        }
+                        ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                      `}
+                    >
+                      <div className="flex items-center gap-1 text-sm">
+                        <UsersIcon className="h-3.5 w-3.5" />
+                        <span>
+                          {priceOption.adults} adult{priceOption.adults !== 1 ? "s" : ""}
+                          {priceOption.children > 0 &&
+                            `, ${priceOption.children} child${priceOption.children !== 1 ? "ren" : ""}`}
+                        </span>
+                      </div>
+                      {isRequestOnly ? (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                          Request Only
+                        </span>
+                      ) : (
+                        <span className="text-sm font-bold text-primary mt-1">
+                          {formatCurrency(priceOption.price, currency)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              ) : (
+                // No prices available - request only
+                <button
+                  onClick={() => onSelectPrice(undefined, true)}
+                  disabled={!isAvailable}
+                  className={`
+                    flex flex-col items-center px-4 py-2 rounded-lg border transition-all
+                    ${selectedRoom?.isRequestOnly
+                      ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30 ring-2 ring-amber-500"
+                      : "border-border hover:border-amber-500/50 hover:bg-accent"
+                    }
+                    ${!isAvailable ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                  `}
+                >
+                  <div className="flex items-center gap-1 text-sm">
+                    <UsersIcon className="h-3.5 w-3.5" />
+                    <span>Up to {room.maxGuests} guests</span>
+                  </div>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Request Only
+                  </span>
+                </button>
               )}
             </div>
 
             {!isAvailable && (
-              <Badge variant="destructive">Sold Out</Badge>
+              <Badge variant="destructive" className="mt-2">Sold Out</Badge>
             )}
           </div>
         </div>

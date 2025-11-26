@@ -23,7 +23,9 @@ export function PropertyCard({
   const href = `/properties/${property.id}${searchParams ? `?${searchParams}` : ""}`;
 
   const mainImage = property.images?.[0]?.url || "/placeholder-property.jpg";
-  const minPrice = property.availability?.minPrice || property.pricePerNight;
+  // Use fromPrice from API, fallback to minPrice or pricePerNight
+  const fromPrice = property.fromPrice ?? property.availability?.minPrice ?? property.pricePerNight;
+  const isRequestOnly = fromPrice === 0 || fromPrice === undefined;
   const isAvailable = property.availability?.available !== false;
 
   return (
@@ -116,21 +118,24 @@ export function PropertyCard({
 
           {/* Price */}
           <div className="pt-2 border-t border-border/50 flex items-end justify-between">
-            {minPrice !== undefined ? (
-              <div>
-                <span className="text-lg font-bold text-primary">
-                  {formatCurrency(minPrice, property.currency)}
+            {isRequestOnly ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-amber-600 dark:text-amber-500">
+                  Request Only
                 </span>
-                <span className="text-sm text-muted-foreground"> / night</span>
               </div>
             ) : (
-              <span className="text-sm text-muted-foreground">
-                Price on request
-              </span>
+              <div>
+                <span className="text-xs text-muted-foreground">from </span>
+                <span className="text-lg font-bold text-primary">
+                  {formatCurrency(fromPrice!, property.currency)}
+                </span>
+                <span className="text-sm text-muted-foreground"> / stay</span>
+              </div>
             )}
 
             <span className="text-xs font-medium text-primary group-hover:underline">
-              View Details →
+              {isRequestOnly ? "Make Request →" : "View Details →"}
             </span>
           </div>
         </div>

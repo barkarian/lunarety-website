@@ -48,6 +48,7 @@ export async function PropertyResults({ searchParams }: PropertyResultsProps) {
       to, // YYYYMMDD format
       rooms,
     });
+    console.log({result});
 
     properties = result.properties || [];
   } catch (e) {

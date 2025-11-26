@@ -17,6 +17,7 @@ export interface DateRangeNumber {
 
 export interface Property {
   id: number;
+  channelPropertyId?: string;
   name: string;
   description?: string;
   address?: string;
@@ -30,11 +31,20 @@ export interface Property {
   currency?: string;
   rooms?: Room[];
   availability?: AvailabilityInfo;
+  // New field from API - starting price for the property
+  fromPrice?: number;
+}
+
+export interface RoomPrice {
+  adults: number;
+  children: number;
+  price: number;
 }
 
 export interface Room {
-  id: number;
+  id: string;
   name: string;
+  channelRoomId?: string;
   description?: string;
   maxGuests: number;
   maxAdults?: number;
@@ -45,6 +55,11 @@ export interface Room {
   pricePerNight?: number;
   available?: boolean;
   quantity?: number;
+  // New fields from API
+  availUnitsOfThisType?: number;
+  totalPrice?: number;
+  prices?: RoomPrice[];
+  availUnits?: number;
 }
 
 export interface AvailabilityInfo {

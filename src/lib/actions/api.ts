@@ -39,7 +39,7 @@ interface BookingData {
 
 export async function getAvailability(params: AvailabilityParams) {
   try {
-    return await AvailabilityService.getAvailability(WEBSITE_API_KEY, {
+    const response = await AvailabilityService.getAvailability(WEBSITE_API_KEY, {
       websiteType: WebsiteType.PLATFORM_MARKETPLACE,
       period: {
         from: params.from,
@@ -51,6 +51,56 @@ export async function getAvailability(params: AvailabilityParams) {
       limit: params.limit || 20,
       propertyIds: params.propertyIds,
     });
+
+    // Transform API response to our Property type
+    // The API returns a different structure than swagger types, so we need to cast
+    const rawProperties = (response as { properties?: unknown[] }).properties || [];
+    
+    const properties = (rawProperties as Array<Record<string, unknown>>).map((prop) => {
+      const rooms = prop.rooms as Array<Record<string, unknown>> | undefined;
+      
+      return {
+        id: prop.id as number,
+        channelPropertyId: prop.channelPropertyId as string | undefined,
+        name: (prop.name || `Property ${prop.id}`) as string,
+        description: prop.description as string | undefined,
+        address: prop.address as string | undefined,
+        city: prop.city as string | undefined,
+        country: prop.country as string | undefined,
+        images: prop.images as Array<{ url: string; alt?: string }> | undefined,
+        amenities: prop.amenities as string[] | undefined,
+        rating: prop.rating as number | undefined,
+        reviewCount: prop.reviewCount as number | undefined,
+        pricePerNight: prop.fromPrice as number | undefined,
+        currency: (prop.currency || "EUR") as string,
+        fromPrice: prop.fromPrice as number | undefined,
+        rooms: rooms?.map((room) => {
+          const roomContent = (room.roomContent || {}) as Record<string, unknown>;
+          const config = (room.config || {}) as Record<string, { max?: number; maxAdults?: number; maxChildren?: number }>;
+          const rates = (room.rates || {}) as Record<string, unknown>;
+          const availability = (room.availability || {}) as Record<string, unknown>;
+          const media = (roomContent.media || []) as Array<Record<string, unknown>>;
+          
+          return {
+            id: room.id as string,
+            name: (room.roomName || room.name) as string,
+            channelRoomId: room.channelRoomId as string | undefined,
+            description: (roomContent.shortDescription || roomContent.longDescription) as string | undefined,
+            maxGuests: (config.pax?.max || 2) as number,
+            maxAdults: config.pax?.maxAdults as number | undefined,
+            maxChildren: config.pax?.maxChildren as number | undefined,
+            images: media.map((m) => ({ url: m.url as string, alt: m.alt as string | undefined })),
+            // Rates info
+            availUnitsOfThisType: rates.availUnitsOfThisType as number | undefined,
+            totalPrice: rates.totalPrice as number | undefined,
+            prices: rates.prices as Array<{ adults: number; children: number; price: number }> | undefined,
+            availUnits: availability.availUnits as number | undefined,
+          };
+        }) || [],
+      };
+    });
+
+    return { properties };
   } catch (error) {
     console.error("Error fetching availability:", error);
     throw error;
