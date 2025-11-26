@@ -1,5 +1,8 @@
 "use server";
 
+// Configure OpenAPI BASE URL for server-side requests
+import "@/lib/api/config";
+
 import { AvailabilityService } from "@/lib/api/generated/services/AvailabilityService";
 import { PropertiesService } from "@/lib/api/generated/services/PropertiesService";
 import { BookingsService } from "@/lib/api/generated/services/BookingsService";
