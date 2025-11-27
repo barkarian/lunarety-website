@@ -27,7 +27,7 @@ export namespace RichText {
         RIGHT = 'right',
         END = 'end',
         JUSTIFY = 'justify',
-        EMPTY = '',
+        NONE = '',
     }
 }
 

@@ -6,6 +6,7 @@ import "@/lib/api/config";
 import { AvailabilityService } from "@/lib/api/generated/services/AvailabilityService";
 import { PropertiesService } from "@/lib/api/generated/services/PropertiesService";
 import { BookingsService } from "@/lib/api/generated/services/BookingsService";
+import { WebsiteService } from "@/lib/api/generated/services/WebsiteService";
 import type { RoomOccupancy } from "@/lib/api/generated/models/RoomOccupancy";
 import { WebsiteType } from "@/lib/api/generated/models/WebsiteType";
 
@@ -216,6 +217,41 @@ export async function createBooking(bookingData: BookingData) {
     });
   } catch (error) {
     console.error("Error creating booking:", error);
+    throw error;
+  }
+}
+
+export async function getWebsiteConfig() {
+  try {
+    const response = await WebsiteService.validateWebsite(WEBSITE_API_KEY);
+    
+    // Resolve logo and favicon URLs if they exist
+    const website = response.website;
+    
+    // The API returns media IDs, but we need URLs
+    // We'll extend the response with URL fields for convenience
+    const enhancedWebsite = {
+      ...website,
+      website: {
+        ...website.website,
+        logoUrl: website.website?.logo 
+          ? `${API_BASE_URL}/api/media/${website.website.logo}` 
+          : null,
+        faviconUrl: website.website?.favicon 
+          ? `${API_BASE_URL}/api/media/${website.website.favicon}` 
+          : null,
+      },
+      seo: website.seo ? {
+        ...website.seo,
+        mediaUrls: website.seo.media?.map(
+          (mediaId) => `${API_BASE_URL}/api/media/${mediaId}`
+        ) || null,
+      } : undefined,
+    };
+    
+    return { website: enhancedWebsite };
+  } catch (error) {
+    console.error("Error validating website:", error);
     throw error;
   }
 }

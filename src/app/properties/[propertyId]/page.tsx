@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
+import type { Metadata } from "next";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PropertyDetails } from "./PropertyDetails";
+import { getAvailability } from "@/lib/actions/api";
+import { getDefaultDates } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{
@@ -15,6 +18,65 @@ interface PageProps {
     to?: string;
     rooms?: string;
   }>;
+}
+
+// Generate dynamic metadata for the property page
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ propertyId: string }>;
+}): Promise<Metadata> {
+  try {
+    const { propertyId } = await params;
+    const defaults = getDefaultDates();
+
+    // Fetch the property to get its details
+    const result = await getAvailability({
+      from: defaults.from,
+      to: defaults.to,
+      rooms: [{ adults: 2, children: 0 }],
+      propertyIds: [parseInt(propertyId)],
+    });
+
+    const property = result.properties?.[0];
+
+    if (!property) {
+      return {
+        title: "Property Not Found",
+        description: "The property you're looking for could not be found.",
+      };
+    }
+
+    const title = property.name;
+    const description =
+      property.shortDescription ||
+      property.description ||
+      `Book ${property.name} - ${[property.city, property.country].filter(Boolean).join(", ")}`;
+    const firstImage = property.images?.[0]?.url;
+
+    return {
+      title: `${title} | Lunarety`,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: firstImage ? [{ url: firstImage, alt: property.name }] : undefined,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: firstImage || undefined,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to generate property metadata:", error);
+    return {
+      title: "Property | Lunarety",
+      description: "View property details and book your stay.",
+    };
+  }
 }
 
 export default async function PropertyPage({
