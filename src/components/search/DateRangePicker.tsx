@@ -42,9 +42,24 @@ export function DateRangePicker({
   }, [dateRange]);
 
   // Handle calendar selection and convert back to numbers
-  const handleCalendarSelect = (range: DateRange | undefined) => {
+  // When a complete range is selected and user clicks a new date, start fresh
+  const handleCalendarSelect = (
+    range: DateRange | undefined,
+    triggerDate: Date
+  ) => {
     if (!range) {
       onDateRangeChange(undefined);
+      return;
+    }
+
+    // If we already have a complete range (both from and to selected),
+    // treat any new click as starting a fresh selection
+    if (dateRange?.from && dateRange?.to) {
+      const newRange: DateRangeNumber = {
+        from: dateToNumber(triggerDate),
+        to: undefined,
+      };
+      onDateRangeChange(newRange);
       return;
     }
 
@@ -101,6 +116,7 @@ export function DateRangePicker({
           selected={calendarDateRange}
           onSelect={handleCalendarSelect}
           numberOfMonths={2}
+          showOutsideDays={false}
           disabled={{ before: new Date() }}
         />
       </PopoverContent>
