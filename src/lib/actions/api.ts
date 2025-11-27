@@ -53,7 +53,6 @@ interface BookingData {
 export async function getAvailability(params: AvailabilityParams) {
   try {
     const response = await AvailabilityService.getAvailability(WEBSITE_API_KEY, {
-      websiteType: WebsiteType.PLATFORM_MARKETPLACE,
       period: {
         from: params.from,
         to: params.to,

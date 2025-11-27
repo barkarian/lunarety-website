@@ -5,14 +5,13 @@
 import type { AvailabilityProperty } from '../models/AvailabilityProperty';
 import type { PerformanceMetrics } from '../models/PerformanceMetrics';
 import type { RoomOccupancy } from '../models/RoomOccupancy';
-import type { WebsiteType } from '../models/WebsiteType';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class AvailabilityService {
     /**
      * Get Property Availability
-     * Retrieves availability information for properties based on check-in/check-out dates and room requirements. Uses the Beds24 channel manager integration.
+     * Retrieves availability information for properties based on check-in/check-out dates and room requirements. Uses the Beds24 channel manager integration. The website type is determined from the website configuration.
      * @param websiteApiKey The unique API key for the website integration
      * @param requestBody
      * @returns any Availability retrieved successfully
@@ -21,7 +20,6 @@ export class AvailabilityService {
     public static getAvailability(
         websiteApiKey: string,
         requestBody: {
-            websiteType: WebsiteType;
             period: {
                 /**
                  * Check-in date timestamp (milliseconds)
