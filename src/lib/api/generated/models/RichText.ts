@@ -10,7 +10,7 @@ export type RichText = {
         type?: string;
         children?: Array<Record<string, any>>;
         direction?: RichText.direction | null;
-        format?: RichText.format;
+        format?: RichText.format | null;
         indent?: number;
         version?: number;
     };
@@ -27,7 +27,6 @@ export namespace RichText {
         RIGHT = 'right',
         END = 'end',
         JUSTIFY = 'justify',
-        NONE = '',
     }
 }
 
