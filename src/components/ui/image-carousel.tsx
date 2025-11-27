@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -95,16 +96,19 @@ export function ImageCarousel({
     return (
       <div
         className={cn(
-          "relative w-full rounded-xl overflow-hidden bg-muted flex items-center justify-center",
+          "relative w-full rounded-xl overflow-hidden bg-muted",
           aspectClasses[aspectRatio],
           className
         )}
         style={containerStyle}
       >
-        <img
+        <Image
           src={images[0].url}
           alt={images[0].alt || "Image"}
-          className="max-w-full max-h-full object-contain"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+          className="object-contain"
+          priority
         />
       </div>
     );
@@ -131,13 +135,16 @@ export function ImageCarousel({
           {images.map((image, index) => (
             <div
               key={index}
-              className="w-full h-full flex-shrink-0 flex items-center justify-center"
+              className="relative w-full h-full flex-shrink-0"
               style={{ minWidth: "100%" }}
             >
-              <img
+              <Image
                 src={image.url}
                 alt={image.alt || `Image ${index + 1}`}
-                className="max-w-full max-h-full object-contain"
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                className="object-contain"
+                priority={index === 0}
                 loading={index === 0 ? "eager" : "lazy"}
               />
             </div>
@@ -203,10 +210,12 @@ export function ImageCarousel({
               )}
               aria-label={`View image ${index + 1}`}
             >
-              <img
+              <Image
                 src={image.thumbnailUrl || image.url}
                 alt={image.alt || `Thumbnail ${index + 1}`}
-                className="w-full h-full object-cover"
+                fill
+                sizes="80px"
+                className="object-cover"
                 loading="lazy"
               />
             </button>

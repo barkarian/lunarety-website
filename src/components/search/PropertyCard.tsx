@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MapPinIcon, StarIcon, UsersIcon, BedIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -34,9 +35,12 @@ export function PropertyCard({
       <div className="bg-card rounded-2xl overflow-hidden border border-border/50 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-border hover:-translate-y-1">
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-            style={{ backgroundImage: `url(${mainImage})` }}
+          <Image
+            src={mainImage}
+            alt={property.name || "Property image"}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
