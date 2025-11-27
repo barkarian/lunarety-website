@@ -46,6 +46,12 @@ import { DateRangePicker } from "@/components/search/DateRangePicker";
 import { RoomSelector } from "@/components/search/RoomSelector";
 import { ImageCarousel } from "@/components/ui/image-carousel";
 import { RichText } from "@/components/RichText";
+import { useWebsite } from "@/components/providers/WebsiteProvider";
+
+// Lazy load PropertyChat - only loads when AI is enabled
+const PropertyChat = React.lazy(() => 
+  import("@/components/chat/PropertyChat").then(mod => ({ default: mod.PropertyChat }))
+);
 import { getAvailability, createBooking } from "@/lib/actions/api";
 import {
   type Property,
@@ -91,6 +97,7 @@ export function PropertyDetails({
 }: PropertyDetailsProps) {
   const router = useRouter();
   const defaults = getDefaultDates();
+  const { website } = useWebsite();
 
   // State
   const [property, setProperty] = React.useState<Property | null>(null);
@@ -973,6 +980,29 @@ export function PropertyDetails({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AI Chat - lazy loaded, only shows if AI is enabled */}
+      {website?.ai?.supportsAi && property && (
+        <React.Suspense fallback={null}>
+          <PropertyChat
+            propertyContext={{
+              name: property.name,
+              description: property.description,
+              shortDescription: property.shortDescription,
+              address: property.address,
+              city: property.city,
+              country: property.country,
+              amenities: property.amenities,
+              rooms: property.rooms?.map((room) => ({
+                name: room.name,
+                description: room.shortDescription || room.description,
+                maxGuests: room.maxGuests,
+                bedType: room.bedType,
+              })),
+            }}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

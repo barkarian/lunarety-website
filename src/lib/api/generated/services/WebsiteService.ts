@@ -80,13 +80,17 @@ export class WebsiteService {
                 favicon?: number | null;
             };
             /**
-             * AI configuration (API key excluded for security)
+             * AI configuration
              */
             ai: {
                 /**
                  * Whether AI features are enabled
                  */
                 supportsAi: boolean;
+                /**
+                 * OpenRouter API key for AI features
+                 */
+                websiteOpenrouterApiKey?: string | null;
             };
             /**
              * SEO configuration

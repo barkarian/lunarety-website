@@ -229,6 +229,10 @@ export async function getWebsiteConfig() {
     
     // The API returns media IDs, but we need URLs
     // We'll extend the response with URL fields for convenience
+    // Exclude sensitive API key from the ai config
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { websiteOpenrouterApiKey, ...safeAiConfig } = website.ai || {};
+    
     const enhancedWebsite = {
       ...website,
       website: {
@@ -246,6 +250,7 @@ export async function getWebsiteConfig() {
           (mediaId) => `${API_BASE_URL}/api/media/${mediaId}`
         ) || null,
       } : undefined,
+      ai: website.ai ? safeAiConfig : undefined,
     };
     
     return { website: enhancedWebsite };
