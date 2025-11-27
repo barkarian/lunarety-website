@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   MapPinIcon,
   StarIcon,
@@ -162,7 +163,6 @@ export function PropertyDetails({
         propertyIds: [parseInt(propertyId)],
       });
 
-      console.log({result});
       if (result.properties && result.properties.length > 0) {
         setProperty(result.properties[0]);
       } else {
@@ -342,74 +342,80 @@ export function PropertyDetails({
   );
 
   // Handle room selection with price option - now supports multiple occupancies per room
-  const selectRoom = (
-    roomId: string,
-    selectedPrice?: RoomPrice,
-    isRequestOnly?: boolean,
-    maxUnits?: number
-  ) => {
-    // Mark that user has manually interacted with selections
-    hasUserInteractedRef.current = true;
-    const priceKey = getPriceKey(selectedPrice);
+  const selectRoom = React.useCallback(
+    (
+      roomId: string,
+      selectedPrice?: RoomPrice,
+      isRequestOnly?: boolean,
+      maxUnits?: number
+    ) => {
+      // Mark that user has manually interacted with selections
+      hasUserInteractedRef.current = true;
+      const priceKey = getPriceKey(selectedPrice);
 
-    setSelectedRooms((prev) => {
-      const existing = prev.find(
-        (r) => r.roomId === roomId && r.priceKey === priceKey
-      );
-
-      if (existing) {
-        // If clicking on already selected occupancy, deselect it
-        return prev.filter(
-          (r) => !(r.roomId === roomId && r.priceKey === priceKey)
+      setSelectedRooms((prev) => {
+        const existing = prev.find(
+          (r) => r.roomId === roomId && r.priceKey === priceKey
         );
-      } else {
-        // Check if we have units available
-        const currentTotalForRoom = prev
-          .filter((r) => r.roomId === roomId)
-          .reduce((sum, r) => sum + r.quantity, 0);
 
-        const availableUnits = (maxUnits || 1) - currentTotalForRoom;
+        if (existing) {
+          // If clicking on already selected occupancy, deselect it
+          return prev.filter(
+            (r) => !(r.roomId === roomId && r.priceKey === priceKey)
+          );
+        } else {
+          // Check if we have units available
+          const currentTotalForRoom = prev
+            .filter((r) => r.roomId === roomId)
+            .reduce((sum, r) => sum + r.quantity, 0);
 
-        if (availableUnits <= 0) {
-          // No units available - don't add
-          return prev;
+          const availableUnits = (maxUnits || 1) - currentTotalForRoom;
+
+          if (availableUnits <= 0) {
+            // No units available - don't add
+            return prev;
+          }
+
+          // Add new selection
+          return [
+            ...prev,
+            { roomId, priceKey, quantity: 1, selectedPrice, isRequestOnly },
+          ];
         }
-
-        // Add new selection
-        return [
-          ...prev,
-          { roomId, priceKey, quantity: 1, selectedPrice, isRequestOnly },
-        ];
-      }
-    });
-  };
+      });
+    },
+    []
+  );
 
   // Update room quantity for a specific occupancy selection
-  const updateRoomQuantity = (
-    roomId: string,
-    priceKey: string,
-    delta: number,
-    maxUnits: number
-  ) => {
-    setSelectedRooms((prev) => {
-      // Calculate current total for this room (excluding the one being updated)
-      const currentTotalExcluding = prev
-        .filter((r) => r.roomId === roomId && r.priceKey !== priceKey)
-        .reduce((sum, r) => sum + r.quantity, 0);
+  const updateRoomQuantity = React.useCallback(
+    (roomId: string, priceKey: string, delta: number, maxUnits: number) => {
+      setSelectedRooms((prev) => {
+        // Calculate current total for this room (excluding the one being updated)
+        const currentTotalExcluding = prev
+          .filter((r) => r.roomId === roomId && r.priceKey !== priceKey)
+          .reduce((sum, r) => sum + r.quantity, 0);
 
-      return prev.map((r) => {
-        if (r.roomId === roomId && r.priceKey === priceKey) {
-          const maxAllowed = maxUnits - currentTotalExcluding;
-          const newQuantity = Math.max(
-            1,
-            Math.min(maxAllowed, r.quantity + delta)
-          );
-          return { ...r, quantity: newQuantity };
-        }
-        return r;
+        return prev.map((r) => {
+          if (r.roomId === roomId && r.priceKey === priceKey) {
+            const maxAllowed = maxUnits - currentTotalExcluding;
+            const newQuantity = Math.max(
+              1,
+              Math.min(maxAllowed, r.quantity + delta)
+            );
+            return { ...r, quantity: newQuantity };
+          }
+          return r;
+        });
       });
-    });
-  };
+    },
+    []
+  );
+
+  // Stable callback for showing room modal
+  const handleShowRoomDetails = React.useCallback((room: Room) => {
+    setSelectedRoomForModal(room);
+  }, []);
 
   // Check if a specific occupancy option is selected
   const isOccupancySelected = React.useCallback(
@@ -667,21 +673,16 @@ export function PropertyDetails({
                     <RoomCard
                       key={room.id}
                       room={room}
+                      roomId={room.id}
                       currency={property.currency}
                       roomSelections={roomSelections}
                       remainingUnits={remainingUnits}
                       maxUnits={maxUnits}
                       totalSelectedForRoom={totalSelectedForRoom}
-                      onSelectPrice={(price, isRequestOnly) =>
-                        selectRoom(room.id, price, isRequestOnly, maxUnits)
-                      }
-                      onUpdateQuantity={(priceKey, delta) =>
-                        updateRoomQuantity(room.id, priceKey, delta, maxUnits)
-                      }
-                      onShowDetails={() => setSelectedRoomForModal(room)}
-                      isOccupancySelected={(price) =>
-                        isOccupancySelected(room.id, price)
-                      }
+                      onSelectRoom={selectRoom}
+                      onUpdateRoomQuantity={updateRoomQuantity}
+                      onShowDetails={handleShowRoomDetails}
+                      checkIsOccupancySelected={isOccupancySelected}
                     />
                   );
                 })
@@ -1095,26 +1096,28 @@ function OccupancyButton({
 
 function RoomCard({
   room,
+  roomId,
   currency,
   roomSelections,
   remainingUnits,
   maxUnits,
   totalSelectedForRoom,
-  onSelectPrice,
-  onUpdateQuantity,
+  onSelectRoom,
+  onUpdateRoomQuantity,
   onShowDetails,
-  isOccupancySelected,
+  checkIsOccupancySelected,
 }: {
   room: Room;
+  roomId: string;
   currency?: string;
   roomSelections: SelectedRoom[];
   remainingUnits: number;
   maxUnits: number;
   totalSelectedForRoom: number;
-  onSelectPrice: (price?: RoomPrice, isRequestOnly?: boolean) => void;
-  onUpdateQuantity: (priceKey: string, delta: number) => void;
-  onShowDetails: () => void;
-  isOccupancySelected: (price: RoomPrice | undefined) => boolean;
+  onSelectRoom: (roomId: string, price?: RoomPrice, isRequestOnly?: boolean, maxUnits?: number) => void;
+  onUpdateRoomQuantity: (roomId: string, priceKey: string, delta: number, maxUnits: number) => void;
+  onShowDetails: (room: Room) => void;
+  checkIsOccupancySelected: (roomId: string, price: RoomPrice | undefined) => boolean;
 }) {
   // Use thumbnailUrl for grid view to save bandwidth
   const roomImage =
@@ -1141,12 +1144,19 @@ function RoomCard({
       <div className="flex flex-col sm:flex-row">
         {/* Room Image */}
         <div
-          className="sm:w-48 aspect-video sm:aspect-square bg-cover bg-center flex-shrink-0 relative group cursor-pointer"
-          style={{ backgroundImage: `url(${roomImage})` }}
-          onClick={onShowDetails}
+          className="sm:w-48 aspect-video sm:aspect-square flex-shrink-0 relative group cursor-pointer overflow-hidden bg-muted"
+          onClick={() => onShowDetails(room)}
         >
+          <Image
+            src={roomImage}
+            alt={room.name || "Room image"}
+            fill
+            sizes="(max-width: 640px) 100vw, 192px"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
           {room.images && room.images.length > 1 && (
-            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full z-10">
               +{room.images.length - 1} photos
             </div>
           )}
@@ -1162,7 +1172,7 @@ function RoomCard({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={onShowDetails}
+                    onClick={() => onShowDetails(room)}
                     className="h-8 w-8 rounded-full hover:bg-primary/10"
                     aria-label="View room details"
                   >
@@ -1214,7 +1224,7 @@ function RoomCard({
             <div className="flex flex-wrap gap-2">
               {prices.length > 0 ? (
                 prices.map((priceOption, idx) => {
-                  const isSelected = isOccupancySelected(priceOption);
+                  const isSelected = checkIsOccupancySelected(roomId, priceOption);
                   const isBlockedByCapacity = !isSelected && remainingUnits <= 0;
                   return (
                     <OccupancyButton
@@ -1227,7 +1237,7 @@ function RoomCard({
                       maxUnits={maxUnits}
                       maxGuests={room.maxGuests}
                       currency={currency}
-                      onSelectPrice={onSelectPrice}
+                      onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, price, isRequestOnly, maxUnits)}
                     />
                   );
                 })
@@ -1235,13 +1245,13 @@ function RoomCard({
                 <OccupancyButton
                   priceOption={undefined}
                   isRequestOnly={true}
-                  isSelected={isOccupancySelected(undefined)}
-                  isBlockedByCapacity={!isOccupancySelected(undefined) && remainingUnits <= 0}
+                  isSelected={checkIsOccupancySelected(roomId, undefined)}
+                  isBlockedByCapacity={!checkIsOccupancySelected(roomId, undefined) && remainingUnits <= 0}
                   isAvailable={isAvailable}
                   maxUnits={maxUnits}
                   maxGuests={room.maxGuests}
                   currency={currency}
-                  onSelectPrice={onSelectPrice}
+                  onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, price, isRequestOnly, maxUnits)}
                 />
               )}
             </div>
@@ -1289,7 +1299,7 @@ function RoomCard({
                           className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onUpdateQuantity(selection.priceKey, -1);
+                            onUpdateRoomQuantity(roomId, selection.priceKey, -1, maxUnits);
                           }}
                           disabled={selection.quantity <= 1}
                         >
@@ -1304,7 +1314,7 @@ function RoomCard({
                           className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onUpdateQuantity(selection.priceKey, 1);
+                            onUpdateRoomQuantity(roomId, selection.priceKey, 1, maxUnits);
                           }}
                           disabled={selection.quantity >= maxAllowed}
                         >
