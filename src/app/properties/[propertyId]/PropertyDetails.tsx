@@ -79,6 +79,7 @@ interface PropertyDetailsProps {
 // Updated interface: each selection has a unique key combining roomId and occupancy
 interface SelectedRoom {
   roomId: string;
+  channelRoomId: string; // The channel room ID (e.g., beds24 room ID)
   priceKey: string; // unique key: "adults-children" e.g. "2-0" for 2 adults, 0 children
   quantity: number;
   selectedPrice?: RoomPrice;
@@ -200,6 +201,7 @@ export function PropertyDetails({
     // For each requested room configuration, try to find a matching price option
     type RoomOption = {
       roomId: string;
+      channelRoomId: string;
       price: RoomPrice;
       priceKey: string;
       availUnits: number;
@@ -236,6 +238,7 @@ export function PropertyDetails({
             if (canAccommodate) {
               const option: RoomOption = {
                 roomId: room.id,
+                channelRoomId: room.channelRoomId || '',
                 price,
                 priceKey: getPriceKey(price),
                 availUnits,
@@ -263,6 +266,7 @@ export function PropertyDetails({
           if (canAccommodate) {
             const option: RoomOption = {
               roomId: room.id,
+              channelRoomId: room.channelRoomId || '',
               price: { adults: room.maxAdults || 2, children: 0, price: 0 },
               priceKey: getPriceKey({
                 adults: room.maxAdults || 2,
@@ -305,6 +309,7 @@ export function PropertyDetails({
           // Add new selection
           newSelections.push({
             roomId: bestOption.roomId,
+            channelRoomId: bestOption.channelRoomId,
             priceKey: bestOption.priceKey,
             quantity: 1,
             selectedPrice: bestOption.price,
@@ -352,6 +357,7 @@ export function PropertyDetails({
   const selectRoom = React.useCallback(
     (
       roomId: string,
+      channelRoomId: string,
       selectedPrice?: RoomPrice,
       isRequestOnly?: boolean,
       maxUnits?: number
@@ -386,7 +392,7 @@ export function PropertyDetails({
           // Add new selection
           return [
             ...prev,
-            { roomId, priceKey, quantity: 1, selectedPrice, isRequestOnly },
+            { roomId, channelRoomId, priceKey, quantity: 1, selectedPrice, isRequestOnly },
           ];
         }
       });
@@ -458,14 +464,6 @@ export function PropertyDetails({
     }, 0);
   }, [selectedRooms, property]);
 
-  const formatDateForBooking = (dateNum: number): string => {
-    const str = String(dateNum);
-    return `${str.substring(0, 4)}-${str.substring(4, 6)}-${str.substring(
-      6,
-      8
-    )}`;
-  };
-
   const handleBooking = async () => {
     if (
       !property ||
@@ -484,37 +482,59 @@ export function PropertyDetails({
     setIsBooking(true);
 
     try {
-      // Calculate total guests based on selected rooms and their quantities
-      const totalGuests = selectedRooms.reduce((acc, sr) => {
-        const adults = sr.selectedPrice?.adults || 2;
-        const children = sr.selectedPrice?.children || 0;
-        return acc + (adults + children) * sr.quantity;
-      }, 0);
+      // Create one booking per room/unit selected
+      // Expand rooms based on quantity (e.g., if quantity is 2, create 2 bookings)
+      const bookingsToCreate: Array<{
+        channelRoomId: string;
+        adults: number;
+        children: number;
+        price: number;
+      }> = [];
 
-      // Expand rooms based on quantity (e.g., if quantity is 2, we need 2 entries)
-      const expandedRooms = selectedRooms.flatMap((sr) => {
-        return Array.from({ length: sr.quantity }, () => ({
-          roomId: parseInt(sr.roomId, 10) || 0,
-          adults: sr.selectedPrice?.adults || rooms[0]?.adults || 2,
-          children: sr.selectedPrice?.children || rooms[0]?.children || 0,
-        }));
+      for (const sr of selectedRooms) {
+        for (let i = 0; i < sr.quantity; i++) {
+          bookingsToCreate.push({
+            channelRoomId: sr.channelRoomId,
+            adults: sr.selectedPrice?.adults || rooms[0]?.adults || 2,
+            children: sr.selectedPrice?.children || rooms[0]?.children || 0,
+            price: sr.selectedPrice?.price || 0,
+          });
+        }
+      }
+
+      // Create all bookings in parallel
+      const bookingPromises = bookingsToCreate.map((bookingRoom) => {
+        const guests = bookingRoom.adults + bookingRoom.children;
+        return createBooking({
+          property: property.id,
+          checkIn: dateRange.from!, // YYYYMMDD number format
+          checkOut: dateRange.to!, // YYYYMMDD number format
+          guestName,
+          guestEmail,
+          guestPhone,
+          guests,
+          totalPrice: bookingRoom.price,
+          status: "pending",
+          rooms: [{
+            channelRoomId: bookingRoom.channelRoomId,
+            adults: bookingRoom.adults,
+            children: bookingRoom.children,
+          }],
+        });
       });
 
-      const result = await createBooking({
-        property: property.id,
-        checkIn: formatDateForBooking(dateRange.from),
-        checkOut: formatDateForBooking(dateRange.to),
-        guestName,
-        guestEmail,
-        guestPhone,
-        guests: totalGuests,
-        totalPrice,
-        status: "pending",
-        rooms: expandedRooms,
-      });
+      const results = await Promise.all(bookingPromises);
 
-      if (result.booking?.id) {
-        router.push(`/bookings/${result.booking.id}`);
+      // Collect all secret UUIDs from created bookings
+      const secretUUIDs = results
+        .map((result) => result.booking?.secretUUID)
+        .filter(Boolean) as string[];
+
+      if (secretUUIDs.length > 0) {
+        // Navigate to booking page with all secret UUIDs
+        router.push(`/bookings/${secretUUIDs.join(",")}`);
+      } else {
+        alert("Booking created but could not retrieve confirmation. Please check your email.");
       }
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed to create booking");
@@ -1144,7 +1164,7 @@ function RoomCard({
   remainingUnits: number;
   maxUnits: number;
   totalSelectedForRoom: number;
-  onSelectRoom: (roomId: string, price?: RoomPrice, isRequestOnly?: boolean, maxUnits?: number) => void;
+  onSelectRoom: (roomId: string, channelRoomId: string, price?: RoomPrice, isRequestOnly?: boolean, maxUnits?: number) => void;
   onUpdateRoomQuantity: (roomId: string, priceKey: string, delta: number, maxUnits: number) => void;
   onShowDetails: (room: Room) => void;
   checkIsOccupancySelected: (roomId: string, price: RoomPrice | undefined) => boolean;
@@ -1267,7 +1287,7 @@ function RoomCard({
                       maxUnits={maxUnits}
                       maxGuests={room.maxGuests}
                       currency={currency}
-                      onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, price, isRequestOnly, maxUnits)}
+                      onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, room.channelRoomId || '', price, isRequestOnly, maxUnits)}
                     />
                   );
                 })
@@ -1281,7 +1301,7 @@ function RoomCard({
                   maxUnits={maxUnits}
                   maxGuests={room.maxGuests}
                   currency={currency}
-                  onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, price, isRequestOnly, maxUnits)}
+                  onSelectPrice={(price, isRequestOnly) => onSelectRoom(roomId, room.channelRoomId || '', price, isRequestOnly, maxUnits)}
                 />
               )}
             </div>

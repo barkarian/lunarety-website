@@ -35,8 +35,8 @@ interface AvailabilityParams {
 
 interface BookingData {
   property?: number;
-  checkIn?: string;
-  checkOut?: string;
+  checkIn?: number; // YYYYMMDD format (e.g., 20251231)
+  checkOut?: number; // YYYYMMDD format (e.g., 20251231)
   guestName?: string;
   guestEmail?: string;
   guestPhone?: string;
@@ -44,10 +44,18 @@ interface BookingData {
   totalPrice?: number;
   status?: "pending" | "confirmed" | "cancelled" | "completed";
   rooms?: Array<{
-    roomId: number;
+    channelRoomId: string; // The channel room ID (e.g., beds24 room ID)
     adults: number;
     children: number;
   }>;
+}
+
+interface BookingHolderUpdate {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  countryCode?: string;
 }
 
 export async function getAvailability(params: AvailabilityParams) {
@@ -186,25 +194,40 @@ export async function getProperties(params: {
   }
 }
 
-export async function getBooking(bookingId: string) {
+export async function getBooking(secretUUID: string) {
   try {
-    return await BookingsService.getBooking(WEBSITE_API_KEY, bookingId);
+    return await BookingsService.getBooking(WEBSITE_API_KEY, secretUUID);
   } catch (error) {
     console.error("Error fetching booking:", error);
     throw error;
   }
 }
 
-export async function updateBooking(
-  bookingId: string,
-  bookingData: Partial<BookingData>
+export async function updateBookingContact(
+  secretUUID: string,
+  bookingHolder: BookingHolderUpdate
 ) {
   try {
-    return await BookingsService.updateBooking(WEBSITE_API_KEY, bookingId, {
-      booking: bookingData,
+    return await BookingsService.updateBooking(WEBSITE_API_KEY, secretUUID, {
+      booking: {
+        bookingHolder,
+      },
     });
   } catch (error) {
     console.error("Error updating booking:", error);
+    throw error;
+  }
+}
+
+// Fetch multiple bookings by their secret UUIDs
+export async function getBookings(secretUUIDs: string[]) {
+  try {
+    const results = await Promise.all(
+      secretUUIDs.map(uuid => BookingsService.getBooking(WEBSITE_API_KEY, uuid))
+    );
+    return results.map(r => r.booking).filter(Boolean);
+  } catch (error) {
+    console.error("Error fetching bookings:", error);
     throw error;
   }
 }

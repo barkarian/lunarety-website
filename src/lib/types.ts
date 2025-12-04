@@ -108,14 +108,24 @@ export interface AvailabilityInfo {
   }>;
 }
 
+export interface BookingHolder {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  countryCode?: string;
+}
+
 export interface Booking {
   id: string;
+  secretUUID: string;
   property: Property | number;
-  checkIn: string;
-  checkOut: string;
-  guestName: string;
-  guestEmail: string;
+  checkIn: number; // YYYYMMDD format (e.g., 20251231)
+  checkOut: number; // YYYYMMDD format (e.g., 20251231)
+  guestName?: string;
+  guestEmail?: string;
   guestPhone?: string;
+  bookingHolder?: BookingHolder;
   guests: number;
   totalPrice: number;
   currency?: string;

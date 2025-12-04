@@ -1,11 +1,11 @@
 "use client";
 
 import { CalendarIcon, UsersIcon, CreditCardIcon } from "lucide-react";
-import { formatCurrency } from "@/lib/types";
+import { formatCurrency, numberToDate } from "@/lib/types";
 
 interface BookingDatesInfoProps {
-  checkIn: string;
-  checkOut: string;
+  checkIn: number; // YYYYMMDD format
+  checkOut: number; // YYYYMMDD format
   guests: number;
   totalPrice: number;
   currency?: string;
@@ -18,8 +18,8 @@ export function BookingDatesInfo({
   totalPrice,
   currency,
 }: BookingDatesInfoProps) {
-  const checkInDate = new Date(checkIn);
-  const checkOutDate = new Date(checkOut);
+  const checkInDate = numberToDate(checkIn);
+  const checkOutDate = numberToDate(checkOut);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

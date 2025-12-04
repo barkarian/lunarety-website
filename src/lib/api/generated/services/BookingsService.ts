@@ -114,6 +114,23 @@ export class BookingsService {
                 guests?: number;
                 totalPrice?: number;
                 status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+                /**
+                 * Array of rooms to book with channel room IDs
+                 */
+                rooms?: Array<{
+                    /**
+                     * The channel room ID (e.g., beds24 room ID)
+                     */
+                    channelRoomId: string;
+                    /**
+                     * Number of adults
+                     */
+                    adults: number;
+                    /**
+                     * Number of children
+                     */
+                    children: number;
+                }>;
             };
         },
     ): CancelablePromise<{
