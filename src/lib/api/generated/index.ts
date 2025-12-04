@@ -11,7 +11,7 @@ export type { AvailabilityMedia } from './models/AvailabilityMedia';
 export type { AvailabilityProperty } from './models/AvailabilityProperty';
 export type { AvailabilityPropertyContent } from './models/AvailabilityPropertyContent';
 export type { AvailabilityRoom } from './models/AvailabilityRoom';
-export type { bookingId } from './models/bookingId';
+export type { bookingSecretUUID } from './models/bookingSecretUUID';
 export type { ErrorResponse } from './models/ErrorResponse';
 export type { PerformanceMetrics } from './models/PerformanceMetrics';
 export { RichText } from './models/RichText';

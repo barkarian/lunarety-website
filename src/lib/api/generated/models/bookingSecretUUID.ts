@@ -3,6 +3,6 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * The unique identifier of the booking
+ * The secret UUID of the booking
  */
-export type bookingId = string;
+export type bookingSecretUUID = string;

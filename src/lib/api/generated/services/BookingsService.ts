@@ -8,15 +8,15 @@ import { request as __request } from '../core/request';
 export class BookingsService {
     /**
      * Get Booking
-     * Retrieves a specific booking by ID
+     * Retrieves a specific booking by secret UUID
      * @param websiteApiKey The unique API key for the website integration
-     * @param bookingId The unique identifier of the booking
+     * @param bookingSecretUuid The secret UUID of the booking
      * @returns any Booking retrieved successfully
      * @throws ApiError
      */
     public static getBooking(
         websiteApiKey: string,
-        bookingId: string,
+        bookingSecretUuid: string,
     ): CancelablePromise<{
         /**
          * The booking with populated relationships
@@ -25,35 +25,42 @@ export class BookingsService {
     }> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/{websiteApiKey}/properties/bookings/{bookingId}',
+            url: '/{websiteApiKey}/properties/bookings/{bookingSecretUUID}',
             path: {
                 'websiteApiKey': websiteApiKey,
-                'bookingId': bookingId,
+                'bookingSecretUUID': bookingSecretUuid,
             },
             errors: {
-                400: `Invalid booking ID`,
                 404: `Website or booking not found`,
                 500: `Failed to fetch booking`,
             },
         });
     }
     /**
-     * Update Booking
-     * Updates an existing booking
+     * Update Booking Contact Info
+     * Updates the contact information of an existing booking using secret UUID. Only bookingHolder information can be updated.
      * @param websiteApiKey The unique API key for the website integration
-     * @param bookingId The unique identifier of the booking
+     * @param bookingSecretUuid The secret UUID of the booking
      * @param requestBody
      * @returns any Booking updated successfully
      * @throws ApiError
      */
     public static updateBooking(
         websiteApiKey: string,
-        bookingId: string,
+        bookingSecretUuid: string,
         requestBody: {
             /**
-             * Partial booking data to update
+             * Partial booking data to update (only bookingHolder allowed)
              */
-            booking: Record<string, any>;
+            booking: {
+                bookingHolder?: {
+                    firstName?: string;
+                    lastName?: string;
+                    email?: string;
+                    phone?: string;
+                    countryCode?: string;
+                };
+            };
         },
     ): CancelablePromise<{
         success?: boolean;
@@ -61,16 +68,16 @@ export class BookingsService {
     }> {
         return __request(OpenAPI, {
             method: 'PUT',
-            url: '/{websiteApiKey}/properties/bookings/{bookingId}',
+            url: '/{websiteApiKey}/properties/bookings/{bookingSecretUUID}',
             path: {
                 'websiteApiKey': websiteApiKey,
-                'bookingId': bookingId,
+                'bookingSecretUUID': bookingSecretUuid,
             },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
-                400: `Invalid booking ID or missing booking data`,
-                404: `Website not found`,
+                400: `Invalid request or restricted fields present`,
+                404: `Website or booking not found`,
                 500: `Failed to update booking`,
             },
         });
