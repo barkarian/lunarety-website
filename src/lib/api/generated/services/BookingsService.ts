@@ -21,7 +21,31 @@ export class BookingsService {
         /**
          * The booking with populated relationships
          */
-        booking?: Record<string, any>;
+        booking?: {
+            id?: string;
+            secretUUID?: string;
+            status?: string;
+            checkIn?: number;
+            checkOut?: number;
+            guests?: number;
+            totalPrice?: number;
+            currency?: string;
+            property?: Record<string, any>;
+            bookingHolder?: {
+                firstName?: string;
+                lastName?: string;
+                email?: string;
+                phone?: string;
+                countryCode?: string;
+            };
+            rooms?: Array<{
+                roomId?: string;
+                roomName?: string;
+                adults?: number;
+                children?: number;
+                price?: number;
+            }>;
+        };
     }> {
         return __request(OpenAPI, {
             method: 'GET',

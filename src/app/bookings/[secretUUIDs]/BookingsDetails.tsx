@@ -212,7 +212,7 @@ export function BookingsDetails({ secretUUIDs }: BookingsDetailsProps) {
                     {bookings.length > 1 ? `Room ${index + 1}` : "Booking Details"}
                   </CardTitle>
                   <CardDescription>
-                    Reference: <span className="font-mono text-xs">{booking.secretUUID?.slice(0, 8) || booking.id}...</span>
+                    Reference: <span className="font-mono text-xs">{booking.id}...</span>
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="text-sm">
