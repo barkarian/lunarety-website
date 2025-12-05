@@ -1,18 +1,10 @@
 "use client";
 
 import { BedIcon } from "lucide-react";
-import { formatCurrency } from "@/lib/types";
-
-interface BookedRoom {
-  roomId: number;
-  roomName: string;
-  adults: number;
-  children: number;
-  price: number;
-}
+import { formatCurrency, type BookingRoom } from "@/lib/types";
 
 interface BookingRoomsListProps {
-  rooms: BookedRoom[];
+  rooms: BookingRoom[];
   currency?: string;
 }
 

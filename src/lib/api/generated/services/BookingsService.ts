@@ -8,7 +8,7 @@ import { request as __request } from '../core/request';
 export class BookingsService {
     /**
      * Get Booking
-     * Retrieves a specific booking by secret UUID
+     * Retrieves a specific booking by secret UUID, including any related bookings for multi-room reservations
      * @param websiteApiKey The unique API key for the website integration
      * @param bookingSecretUuid The secret UUID of the booking
      * @returns any Booking retrieved successfully
@@ -44,6 +44,25 @@ export class BookingsService {
                 adults?: number;
                 children?: number;
                 price?: number;
+            }>;
+            /**
+             * Reference to the main booking if this is a related booking
+             */
+            mainBooking?: Record<string, any> | null;
+            /**
+             * Related bookings for multi-room reservations (only present on main bookings)
+             */
+            relatedBookings?: Array<{
+                id?: string;
+                secretUUID?: string;
+                status?: string;
+                checkIn?: number;
+                checkOut?: number;
+                guests?: number;
+                totalPrice?: number;
+                currency?: string;
+                bookingHolder?: Record<string, any>;
+                rooms?: Array<Record<string, any>>;
             }>;
         };
     }> {
@@ -108,7 +127,7 @@ export class BookingsService {
     }
     /**
      * Create Booking
-     * Creates a new booking for a property
+     * Creates a new booking for a property. When multiple rooms are provided, the first room becomes the main booking and additional rooms are created as related bookings linked to the main booking.
      * @param websiteApiKey The unique API key for the website integration
      * @param requestBody
      * @returns any Booking created successfully
@@ -139,7 +158,7 @@ export class BookingsService {
                 totalPrice?: number;
                 status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
                 /**
-                 * Array of rooms to book with channel room IDs
+                 * Array of rooms to book with channel room IDs. First room becomes main booking, additional rooms become related bookings.
                  */
                 rooms?: Array<{
                     /**
@@ -154,15 +173,23 @@ export class BookingsService {
                      * Number of children
                      */
                     children: number;
+                    /**
+                     * Price for this specific room (optional)
+                     */
+                    price?: number;
                 }>;
             };
         },
     ): CancelablePromise<{
         success?: boolean;
         /**
-         * The created booking
+         * The main booking (first room)
          */
         booking?: Record<string, any>;
+        /**
+         * Additional bookings for extra rooms (if multiple rooms were requested)
+         */
+        relatedBookings?: Array<Record<string, any>>;
     }> {
         return __request(OpenAPI, {
             method: 'POST',

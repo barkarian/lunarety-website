@@ -116,6 +116,30 @@ export interface BookingHolder {
   countryCode?: string;
 }
 
+export interface BookingRoom {
+  roomId: number | string;
+  roomName: string;
+  adults: number;
+  children: number;
+  price: number;
+}
+
+export interface RelatedBooking {
+  id: string;
+  secretUUID: string;
+  status: "pending" | "confirmed" | "cancelled" | "completed";
+  checkIn: number;
+  checkOut: number;
+  guests: number;
+  totalPrice: number;
+  currency?: string;
+  bookingHolder?: BookingHolder;
+  guestName?: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  rooms?: BookingRoom[];
+}
+
 export interface Booking {
   id: string;
   secretUUID: string;
@@ -130,16 +154,13 @@ export interface Booking {
   totalPrice: number;
   currency?: string;
   status: "pending" | "confirmed" | "cancelled" | "completed";
-  rooms?: Array<{
-    roomId: number;
-    roomName: string;
-    adults: number;
-    children: number;
-    price: number;
-  }>;
+  rooms?: BookingRoom[];
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  // Multi-room booking support
+  mainBooking?: { id: string; secretUUID: string } | null;
+  relatedBookings?: RelatedBooking[];
 }
 
 export function parseRooms(roomsParam: string | undefined): RoomOccupancy[] {
