@@ -8,15 +8,12 @@ import { BookingsDetailsSkeleton } from "./BookingsDetailsSkeleton";
 
 interface PageProps {
   params: Promise<{
-    secretUUIDs: string;
+    secretUUID: string;
   }>;
 }
 
 export default async function BookingsPage({ params }: PageProps) {
-  const { secretUUIDs } = await params;
-  
-  // Parse comma-separated UUIDs
-  const uuids = secretUUIDs.split(",").filter(Boolean);
+  const { secretUUID } = await params;
 
   return (
     <main className="min-h-screen pattern-bg">
@@ -30,9 +27,7 @@ export default async function BookingsPage({ params }: PageProps) {
                 Back to home
               </Button>
             </Link>
-            <h1 className="text-lg font-semibold">
-              {uuids.length > 1 ? "Your Bookings" : "Your Booking"}
-            </h1>
+            <h1 className="text-lg font-semibold">Your Booking</h1>
             <div className="w-24" /> {/* Spacer for centering */}
           </div>
         </div>
@@ -40,8 +35,8 @@ export default async function BookingsPage({ params }: PageProps) {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Suspense fallback={<BookingsDetailsSkeleton count={uuids.length} />}>
-          <BookingsDetails secretUUIDs={uuids} />
+        <Suspense fallback={<BookingsDetailsSkeleton count={1} />}>
+          <BookingsDetails secretUUID={secretUUID} />
         </Suspense>
       </div>
 

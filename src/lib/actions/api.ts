@@ -219,19 +219,6 @@ export async function updateBookingContact(
   }
 }
 
-// Fetch multiple bookings by their secret UUIDs
-export async function getBookings(secretUUIDs: string[]) {
-  try {
-    const results = await Promise.all(
-      secretUUIDs.map(uuid => BookingsService.getBooking(WEBSITE_API_KEY, uuid))
-    );
-    return results.map(r => r.booking).filter(Boolean);
-  } catch (error) {
-    console.error("Error fetching bookings:", error);
-    throw error;
-  }
-}
-
 export async function createBooking(bookingData: BookingData) {
   try {
     return await BookingsService.createBooking(WEBSITE_API_KEY, {

@@ -525,14 +525,12 @@ export function PropertyDetails({
 
       const results = await Promise.all(bookingPromises);
 
-      // Collect all secret UUIDs from created bookings
-      const secretUUIDs = results
-        .map((result) => result.booking?.secretUUID)
-        .filter(Boolean) as string[];
+      // Get the first secretUUID from created bookings
+      const secretUUID = results[0]?.booking?.secretUUID;
 
-      if (secretUUIDs.length > 0) {
-        // Navigate to booking page with all secret UUIDs
-        router.push(`/bookings/${secretUUIDs.join(",")}`);
+      if (secretUUID) {
+        // Navigate to booking page
+        router.push(`/bookings/${secretUUID}`);
       } else {
         alert("Booking created but could not retrieve confirmation. Please check your email.");
       }
