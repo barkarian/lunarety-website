@@ -127,7 +127,12 @@ export interface BookingRoom {
 export interface RelatedBooking {
   id: string;
   secretUUID: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status:
+    | "confirmed"
+    | "cancelled"
+    | "inquiry"
+    | "on-hold"
+    | "no-show";
   checkIn: number;
   checkOut: number;
   guests: number;
@@ -153,7 +158,12 @@ export interface Booking {
   guests: number;
   totalPrice: number;
   currency?: string;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status:
+    | "confirmed"
+    | "cancelled"
+    | "inquiry"
+    | "on-hold"
+    | "no-show";
   rooms?: BookingRoom[];
   createdAt: string;
   updatedAt: string;

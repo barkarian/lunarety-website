@@ -520,7 +520,7 @@ export function PropertyDetails({
           guestPhone,
           guests,
           totalPrice: bookingRoom.price,
-          status: "pending",
+          status: "inquiry",
           room: {
             channelRoomId: bookingRoom.channelRoomId,
             adults: bookingRoom.adults,

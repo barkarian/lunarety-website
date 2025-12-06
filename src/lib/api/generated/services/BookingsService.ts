@@ -157,7 +157,7 @@ export class BookingsService {
                 guestPhone?: string;
                 guests?: number;
                 totalPrice?: number;
-                status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+                status?: 'confirmed' | 'cancelled' | 'inquiry' | 'on-hold' | 'no-show';
                 /**
                  * Single room to book
                  */

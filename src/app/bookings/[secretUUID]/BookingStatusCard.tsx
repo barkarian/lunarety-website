@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import type { Booking } from "@/lib/types";
+
+type BookingStatus = Booking["status"];
 
 interface StatusConfig {
   icon: LucideIcon;
@@ -16,13 +19,20 @@ interface StatusConfig {
   description: string;
 }
 
-const statusConfigs: Record<string, StatusConfig> = {
-  pending: {
+const statusConfigs: Record<BookingStatus, StatusConfig> = {
+  inquiry: {
     icon: ClockIcon,
-    color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-    label: "Pending Confirmation",
+    color: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+    label: "Inquiry Received",
     description:
-      "Your booking is being reviewed. You'll receive confirmation shortly.",
+      "We haven't held this booking yet. We'll contact you shortly to confirm the details.",
+  },
+  "on-hold": {
+    icon: ClockIcon,
+    color: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+    label: "On Hold",
+    description:
+      "We've held this booking for you. Watch for our confirmation or any follow-up requests.",
   },
   confirmed: {
     icon: CheckCircle2Icon,
@@ -36,20 +46,20 @@ const statusConfigs: Record<string, StatusConfig> = {
     label: "Cancelled",
     description: "This booking has been cancelled.",
   },
-  completed: {
-    icon: CheckCircle2Icon,
-    color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-    label: "Completed",
-    description: "Thank you for staying with us!",
+  "no-show": {
+    icon: XCircleIcon,
+    color: "bg-red-500/10 text-red-600 border-red-500/20",
+    label: "No Show",
+    description: "This booking was marked as a no-show.",
   },
 };
 
 interface BookingStatusCardProps {
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: BookingStatus;
 }
 
 export function BookingStatusCard({ status }: BookingStatusCardProps) {
-  const config = statusConfigs[status] || statusConfigs.pending;
+  const config = statusConfigs[status] || statusConfigs.inquiry;
   const StatusIcon = config.icon;
 
   return (
