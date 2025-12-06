@@ -52,7 +52,11 @@ import { useWebsite } from "@/components/providers/WebsiteProvider";
 const PropertyChat = React.lazy(() => 
   import("@/components/chat/PropertyChat").then(mod => ({ default: mod.PropertyChat }))
 );
-import { getAvailability, createBooking } from "@/lib/actions/api";
+import {
+  getAvailability,
+  createBooking,
+  type CreateBookingRequestBody,
+} from "@/lib/actions/api";
 import {
   type Property,
   type Room,
@@ -502,31 +506,36 @@ export function PropertyDetails({
         }
       }
 
-      // Create all bookings in parallel
-      const bookingPromises = bookingsToCreate.map((bookingRoom) => {
+      // Send a single request with all bookings so the API can link secondary bookings to the main one
+      const toDateString = (value: number | string) => String(value);
+
+      const bookingsPayload: CreateBookingRequestBody["bookings"] = bookingsToCreate.map((bookingRoom) => {
         const guests = bookingRoom.adults + bookingRoom.children;
-        return createBooking({
+        return {
           property: property.id,
-          checkIn: dateRange.from!, // YYYYMMDD number format
-          checkOut: dateRange.to!, // YYYYMMDD number format
+          checkIn: toDateString(dateRange.from!), // API expects string
+          checkOut: toDateString(dateRange.to!), // API expects string
           guestName,
           guestEmail,
           guestPhone,
           guests,
           totalPrice: bookingRoom.price,
           status: "pending",
-          rooms: [{
+          room: {
             channelRoomId: bookingRoom.channelRoomId,
             adults: bookingRoom.adults,
             children: bookingRoom.children,
-          }],
-        });
+            price: bookingRoom.price,
+          },
+        };
       });
 
-      const results = await Promise.all(bookingPromises);
+      const result = await createBooking(bookingsPayload);
 
-      // Get the first secretUUID from created bookings
-      const secretUUID = results[0]?.booking?.secretUUID;
+      // Use the main booking's secretUUID; fall back to the first related booking if needed
+      const secretUUID =
+        (result?.booking as { secretUUID?: string } | undefined)?.secretUUID ||
+        (result?.relatedBookings?.[0] as { secretUUID?: string } | undefined)?.secretUUID;
 
       if (secretUUID) {
         // Navigate to booking page

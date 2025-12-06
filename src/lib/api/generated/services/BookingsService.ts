@@ -127,7 +127,7 @@ export class BookingsService {
     }
     /**
      * Create Booking
-     * Creates a new booking for a property. When multiple rooms are provided, the first room becomes the main booking and additional rooms are created as related bookings linked to the main booking.
+     * Creates a new booking for a property. When multiple bookings are provided, the first booking becomes the main booking and additional bookings are created as related bookings linked to the main booking.
      * @param websiteApiKey The unique API key for the website integration
      * @param requestBody
      * @returns any Booking created successfully
@@ -137,11 +137,11 @@ export class BookingsService {
         websiteApiKey: string,
         requestBody: {
             /**
-             * Booking data (matches Payload bookings collection schema)
+             * Array of bookings. The first item becomes the main booking; subsequent items are linked to it via `mainBooking`.
              */
-            booking: {
+            bookings: Array<{
                 /**
-                 * Property ID
+                 * Property ID (all bookings must target the same property)
                  */
                 property?: number;
                 /**
@@ -154,13 +154,14 @@ export class BookingsService {
                 checkOut?: string;
                 guestName?: string;
                 guestEmail?: string;
+                guestPhone?: string;
                 guests?: number;
                 totalPrice?: number;
                 status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
                 /**
-                 * Array of rooms to book with channel room IDs. First room becomes main booking, additional rooms become related bookings.
+                 * Single room to book
                  */
-                rooms?: Array<{
+                room?: {
                     /**
                      * The channel room ID (e.g., beds24 room ID)
                      */
@@ -168,17 +169,17 @@ export class BookingsService {
                     /**
                      * Number of adults
                      */
-                    adults: number;
+                    adults?: number;
                     /**
                      * Number of children
                      */
-                    children: number;
+                    children?: number;
                     /**
                      * Price for this specific room (optional)
                      */
                     price?: number;
-                }>;
-            };
+                };
+            }>;
         },
     ): CancelablePromise<{
         success?: boolean;

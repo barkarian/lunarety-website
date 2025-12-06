@@ -33,22 +33,32 @@ interface AvailabilityParams {
   limit?: number;
 }
 
-interface BookingData {
+export interface BookingRoomData {
+  channelRoomId: string; // The channel room ID (e.g., beds24 room ID)
+  adults: number;
+  children: number;
+  price?: number;
+}
+
+export interface BookingData {
   property?: number;
-  checkIn?: number; // YYYYMMDD format (e.g., 20251231)
-  checkOut?: number; // YYYYMMDD format (e.g., 20251231)
+  checkIn?: number | string; // YYYYMMDD format (e.g., 20251231) or YYYY-MM-DD
+  checkOut?: number | string; // YYYYMMDD format (e.g., 20251231) or YYYY-MM-DD
   guestName?: string;
   guestEmail?: string;
   guestPhone?: string;
   guests?: number;
   totalPrice?: number;
   status?: "pending" | "confirmed" | "cancelled" | "completed";
-  rooms?: Array<{
-    channelRoomId: string; // The channel room ID (e.g., beds24 room ID)
-    adults: number;
-    children: number;
-  }>;
+  room: BookingRoomData;
 }
+
+export type CreateBookingRequestBody =
+  Parameters<typeof BookingsService.createBooking>[1];
+
+export type CreateBookingResponse = Awaited<
+  ReturnType<typeof BookingsService.createBooking>
+>;
 
 interface BookingHolderUpdate {
   firstName?: string;
@@ -219,10 +229,35 @@ export async function updateBookingContact(
   }
 }
 
-export async function createBooking(bookingData: BookingData) {
+export async function createBooking(
+  bookings: CreateBookingRequestBody["bookings"],
+): Promise<CreateBookingResponse> {
   try {
+    if (!bookings?.length) {
+      throw new Error("At least one booking is required");
+    }
+
+    bookings.forEach((booking, index) => {
+      if (!booking.room?.channelRoomId) {
+        throw new Error(`room.channelRoomId is required for booking at index ${index}`);
+      }
+    });
+
+    const toDateString = (value: BookingData["checkIn"]) =>
+      value === undefined ? undefined : String(value);
+
     return await BookingsService.createBooking(WEBSITE_API_KEY, {
-      booking: bookingData,
+      bookings: bookings.map((booking) => ({
+        ...booking,
+        checkIn: toDateString(booking.checkIn),
+        checkOut: toDateString(booking.checkOut),
+        room: {
+          channelRoomId: booking.room!.channelRoomId,
+          adults: booking.room!.adults,
+          children: booking.room!.children,
+          price: booking.room!.price,
+        },
+      })),
     });
   } catch (error) {
     console.error("Error creating booking:", error);
