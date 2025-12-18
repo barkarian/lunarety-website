@@ -30,7 +30,7 @@ export interface WebsiteConfig {
     favicon?: number | null;
     faviconUrl?: string | null;
   };
-  ai: {
+  ai?: {
     supportsAi: boolean;
   };
   seo?: {
