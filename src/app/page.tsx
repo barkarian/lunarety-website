@@ -23,7 +23,7 @@ export default async function HomePage({ searchParams }: PageProps) {
           <div className="text-center mb-10 animate-fade-in-up">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
               Find Your Perfect
-              <span className="gradient-text block">Getaway</span>
+              <span className="block text-primary">Getaway</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
               Discover handpicked properties for your next adventure. Book with
