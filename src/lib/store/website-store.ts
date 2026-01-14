@@ -34,6 +34,7 @@ export interface WebsiteConfig {
   };
   websiteApiKey: string;
   website?: {
+    websiteName?: string | null;
     logo?: number | null;
     logoUrl?: string | null;
     favicon?: number | null;
@@ -78,6 +79,7 @@ interface WebsiteStore {
   getFavicon: () => string | null;
   getSeo: () => WebsiteConfig["seo"] | null;
   getUserBaseType: () => UserBaseType | null;
+  getWebsiteName: () => string;
 }
 
 // Cache duration: 1 hour
@@ -130,6 +132,11 @@ export const useWebsiteStore = create<WebsiteStore>()(
       getUserBaseType: () => {
         const website = get().website;
         return website?.userBaseType || null;
+      },
+
+      getWebsiteName: () => {
+        const website = get().website;
+        return website?.website?.websiteName || website?.seo?.title || "the team";
       },
     }),
     {

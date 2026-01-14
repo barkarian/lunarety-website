@@ -164,7 +164,7 @@ export function BookingContactForm({
   // Show sign-in prompt or manual form
   return (
     <div className="space-y-4">
-      {/* Sign-in option for all-or-guests */}
+      {/* Sign-in prompt for all-or-guests */}
       {supportsAuth && !useManualForm && userBaseType === "all-or-guests" && (
         <div className="p-4 bg-accent/30 rounded-lg border border-dashed">
           <div className="flex items-center gap-3 mb-3">
@@ -183,7 +183,7 @@ export function BookingContactForm({
               size="sm"
               onClick={() => setShowAuthModal(true)}
             >
-              Sign In
+              Sign In or Sign Up
             </Button>
             <Button
               type="button"
@@ -194,6 +194,29 @@ export function BookingContactForm({
               Continue as Guest
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Sign-in required for agents-only websites */}
+      {supportsAuth && !useManualForm && userBaseType === "agents" && (
+        <div className="p-4 bg-accent/30 rounded-lg border border-dashed">
+          <div className="flex items-center gap-3 mb-3">
+            <LogIn className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="font-medium text-sm">Sign in required</p>
+              <p className="text-xs text-muted-foreground">
+                Please sign in with your agent account to continue
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAuthModal(true)}
+          >
+            Sign In
+          </Button>
         </div>
       )}
 
@@ -233,7 +256,7 @@ export function BookingContactForm({
         open={showAuthModal}
         onOpenChange={setShowAuthModal}
         onSuccess={handleAuthSuccess}
-        onContinueAsGuest={handleContinueAsGuest}
+        onContinueAsGuest={userBaseType === "all-or-guests" ? handleContinueAsGuest : undefined}
       />
     </div>
   );

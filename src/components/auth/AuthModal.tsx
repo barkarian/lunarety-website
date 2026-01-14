@@ -113,16 +113,21 @@ export function BookingAuthModal({
   onSuccess,
   onContinueAsGuest,
 }: BookingAuthModalProps) {
-  const [mode, setMode] = React.useState<AuthMode>("sign-up");
   const { getUserBaseType } = useWebsiteStore();
   const userBaseType = getUserBaseType();
+  
+  // For agents-only, always show sign-in. For all-or-guests, default to sign-up
+  const isAgentsOnly = userBaseType === "agents";
+  const defaultMode: AuthMode = isAgentsOnly ? "sign-in" : "sign-up";
+  
+  const [mode, setMode] = React.useState<AuthMode>(defaultMode);
 
-  // Reset mode when modal opens - default to sign-up for new users
+  // Reset mode when modal opens - based on userBaseType
   React.useEffect(() => {
     if (open) {
-      setMode("sign-up");
+      setMode(isAgentsOnly ? "sign-in" : "sign-up");
     }
-  }, [open]);
+  }, [open, isAgentsOnly]);
 
   const handleSuccess = () => {
     onSuccess?.();
@@ -197,7 +202,7 @@ export function BookingAuthModal({
                 showSwitchToSignUp={showSignUp}
               />
               
-              {/* Continue as guest option */}
+              {/* Continue as guest option - only for all-or-guests */}
               {showContinueAsGuest && (
                 <div className="px-6 pb-6 pt-0 border-t mt-4">
                   <div className="text-center">

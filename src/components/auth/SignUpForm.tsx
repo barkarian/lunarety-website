@@ -47,6 +47,11 @@ export function SignUpForm({
 
   // Sign-up is only available for all-or-guests websites
   const canSignUp = userBaseType === "all-or-guests";
+  const isAgentsOnly = userBaseType === "agents";
+
+  // Get website name for contact message
+  const { getWebsiteName } = useWebsiteStore();
+  const websiteName = getWebsiteName();
 
   const handleChange = (field: keyof typeof formData) => (
     e: React.ChangeEvent<HTMLInputElement>
@@ -113,6 +118,37 @@ export function SignUpForm({
   };
 
   const displayError = localError || error;
+
+  // For agents-only websites, show contact message instead of sign-up
+  if (isAgentsOnly) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+            <UserCheck className="h-6 w-6 text-primary" />
+          </div>
+          <CardTitle>Agent Account Required</CardTitle>
+          <CardDescription className="mt-2">
+            This website is for registered agents only. Account creation is not available through self-registration.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-4 bg-accent/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              Please contact <span className="font-medium text-foreground">{websiteName}</span> to get your agent account set up.
+            </p>
+          </div>
+        </CardContent>
+        {showSwitchToSignIn && onSwitchToSignIn && (
+          <CardFooter className="flex flex-col gap-3">
+            <Button onClick={onSwitchToSignIn} className="w-full">
+              Sign In with Existing Account
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+    );
+  }
 
   if (!canSignUp) {
     return (

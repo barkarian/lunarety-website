@@ -34,8 +34,12 @@ export function SignInForm({
 }: SignInFormProps) {
   const { setAuth, setLoading, setError, isLoading, error, clearAuth } =
     useAuthStore();
-  const { getUserBaseType } = useWebsiteStore();
+  const { getUserBaseType, getWebsiteName } = useWebsiteStore();
   const userBaseType = getUserBaseType();
+  
+  // Get website name for contact message
+  const websiteName = getWebsiteName();
+  const isAgentsOnly = userBaseType === "agents";
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -88,7 +92,9 @@ export function SignInForm({
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
         <CardDescription>
-          Enter your credentials to access your account
+          {isAgentsOnly 
+            ? "Sign in with your agent account"
+            : "Enter your credentials to access your account"}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -156,6 +162,14 @@ export function SignInForm({
               >
                 Create one
               </button>
+            </p>
+          )}
+
+          {/* For agents-only websites, show contact message instead of sign-up link */}
+          {isAgentsOnly && (
+            <p className="text-xs text-center text-muted-foreground">
+              Don&apos;t have an account? Contact{" "}
+              <span className="font-medium">{websiteName}</span> to get access.
             </p>
           )}
         </CardFooter>
