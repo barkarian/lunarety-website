@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   images: {
     // In development, localhost resolves to private IP which Next.js blocks
     // So we disable optimization for dev. In production, optimization works normally.
