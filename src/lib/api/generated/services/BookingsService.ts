@@ -266,4 +266,105 @@ export class BookingsService {
             },
         });
     }
+    /**
+     * Get authenticated user's bookings
+     * Retrieves all bookings for the authenticated user where they are either the agent or guest.
+     * Requires a valid JWT token from sign-in/sign-up. Returns paginated results with depth=0
+     * (only IDs for relationships, no populated data).
+     *
+     * @param websiteApiKey The unique API key for the website integration (also used as JWT secret)
+     * @param authorization Bearer token received from sign-in or sign-up
+     * @param page Page number for pagination (defaults to 1)
+     * @param limit Number of bookings per page (defaults to 10, max 100)
+     * @returns any User bookings retrieved successfully
+     * @throws ApiError
+     */
+    public static getUserBookings(
+        websiteApiKey: string,
+        authorization: string,
+        page: number = 1,
+        limit: number = 10,
+    ): CancelablePromise<{
+        success?: boolean;
+        bookings?: Array<{
+            id?: number;
+            secretUUID?: string;
+            reservationName?: string;
+            status?: 'confirmed' | 'cancelled' | 'inquiry' | 'on-hold' | 'no-show';
+            source?: 'ota' | 'websitePlatform' | 'websiteManager' | 'websiteOwner' | 'direct' | 'empty';
+            ota?: string;
+            /**
+             * Website ID (depth=0)
+             */
+            website?: number | null;
+            /**
+             * Property ID (depth=0)
+             */
+            property?: number;
+            /**
+             * Manager user ID (depth=0)
+             */
+            manager?: number;
+            channelManager?: string;
+            channelBookingId?: string;
+            resource?: {
+                checkIn?: number;
+                checkOut?: number;
+                adults?: number;
+                children?: number;
+                roomAndUnit?: {
+                    roomId?: string;
+                    unitId?: string;
+                };
+            };
+            bookingHolder?: {
+                /**
+                 * Agent user ID (depth=0)
+                 */
+                agent?: number | null;
+                /**
+                 * Guest user ID (depth=0)
+                 */
+                guest?: number | null;
+                firstName?: string | null;
+                lastName?: string | null;
+                email?: string | null;
+                phone?: string | null;
+                countryCode?: string | null;
+            };
+            pricing?: {
+                totalAmount?: number;
+            };
+            createdAt?: string;
+            updatedAt?: string;
+        }>;
+        pagination?: {
+            page?: number;
+            limit?: number;
+            totalDocs?: number;
+            totalPages?: number;
+            hasNextPage?: boolean;
+            hasPrevPage?: boolean;
+        };
+    }> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/{websiteApiKey}/properties/bookings/user-bookings',
+            path: {
+                'websiteApiKey': websiteApiKey,
+            },
+            headers: {
+                'Authorization': authorization,
+            },
+            query: {
+                'page': page,
+                'limit': limit,
+            },
+            errors: {
+                401: `Invalid or expired token, or user is not an agent/guest`,
+                404: `Website or user not found`,
+                500: `Failed to fetch user bookings`,
+            },
+        });
+    }
 }
