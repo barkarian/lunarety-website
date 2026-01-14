@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { User, LogOut, LogIn, UserPlus, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { User, LogOut, LogIn, UserPlus, ChevronDown, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -127,7 +128,19 @@ export function UserMenu() {
 
         <Separator />
 
-        <div className="p-2">
+        <div className="p-2 space-y-1">
+          <Button
+            variant="ghost"
+            className="w-full justify-start"
+            asChild
+            onClick={() => setMenuOpen(false)}
+          >
+            <Link href="/my-bookings">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              My Bookings
+            </Link>
+          </Button>
+          
           <Button
             variant="ghost"
             className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"

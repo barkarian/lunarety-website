@@ -483,3 +483,65 @@ export async function refreshAuth(token: string): Promise<AuthResult> {
     };
   }
 }
+
+// User Bookings
+export type UserBooking = NonNullable<
+  Awaited<ReturnType<typeof BookingsService.getUserBookings>>["bookings"]
+>[number];
+
+export type UserBookingsResult = {
+  success: boolean;
+  bookings?: UserBooking[];
+  pagination?: {
+    page: number;
+    limit: number;
+    totalDocs: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  error?: string;
+};
+
+export async function getUserBookings(
+  token: string,
+  page: number = 1,
+  limit: number = 10
+): Promise<UserBookingsResult> {
+  try {
+    const response = await BookingsService.getUserBookings(
+      WEBSITE_API_KEY,
+      `Bearer ${token}`,
+      page,
+      limit
+    );
+
+    if (response.success && response.bookings) {
+      return {
+        success: true,
+        bookings: response.bookings,
+        pagination: response.pagination
+          ? {
+              page: response.pagination.page!,
+              limit: response.pagination.limit!,
+              totalDocs: response.pagination.totalDocs!,
+              totalPages: response.pagination.totalPages!,
+              hasNextPage: response.pagination.hasNextPage!,
+              hasPrevPage: response.pagination.hasPrevPage!,
+            }
+          : undefined,
+      };
+    }
+
+    return {
+      success: false,
+      error: "Failed to fetch bookings",
+    };
+  } catch (error) {
+    console.error("Error fetching user bookings:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch bookings",
+    };
+  }
+}

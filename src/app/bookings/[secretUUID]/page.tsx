@@ -1,8 +1,6 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/ui/back-button";
 import { BookingsDetails } from "./BookingsDetails";
 import { BookingsDetailsSkeleton } from "./BookingsDetailsSkeleton";
 
@@ -21,12 +19,7 @@ export default async function BookingsPage({ params }: PageProps) {
       <header className="sticky top-0 z-50 glass border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back to home
-              </Button>
-            </Link>
+            <BackButton label="Back" fallbackHref="/my-bookings" />
             <h1 className="text-lg font-semibold">Your Booking</h1>
             <div className="w-24" /> {/* Spacer for centering */}
           </div>

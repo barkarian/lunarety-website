@@ -1,10 +1,8 @@
 import { Suspense } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon } from "lucide-react";
 import type { Metadata } from "next";
 
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackButton } from "@/components/ui/back-button";
 import { PropertyDetails } from "./PropertyDetails";
 import { getAvailability } from "@/lib/actions/api";
 import { getDefaultDates } from "@/lib/types";
@@ -92,12 +90,7 @@ export default async function PropertyPage({
       <header className="sticky top-0 z-50 glass border-b border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-4">
-            <Link href={`/?${new URLSearchParams(search as Record<string, string>).toString()}`}>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back to search
-              </Button>
-            </Link>
+            <BackButton label="Back to search" fallbackHref="/" />
           </div>
         </div>
       </header>
