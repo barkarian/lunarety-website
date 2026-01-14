@@ -27,8 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -47,6 +45,14 @@ import { RoomSelector } from "@/components/search/RoomSelector";
 import { ImageCarousel } from "@/components/ui/image-carousel";
 import { RichText } from "@/components/RichText";
 import { useWebsite } from "@/components/providers/WebsiteProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import {
+  BookingContactForm,
+  validateBookingContactData,
+  type BookingContactData,
+  type AuthenticatedBookingData,
+} from "@/components/booking/BookingContactForm";
 
 // Lazy load PropertyChat - only loads when AI is enabled
 const PropertyChat = React.lazy(() => 
@@ -138,10 +144,19 @@ export function PropertyDetails({
   // This prevents auto-select from running after user deselects all rooms
   const hasUserInteractedRef = React.useRef(false);
 
-  // Guest info state
-  const [guestName, setGuestName] = React.useState("");
-  const [guestEmail, setGuestEmail] = React.useState("");
-  const [guestPhone, setGuestPhone] = React.useState("");
+  // Contact form state for booking
+  const [contactData, setContactData] = React.useState<BookingContactData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    countryCode: "",
+  });
+  const [authenticatedData, setAuthenticatedData] = React.useState<AuthenticatedBookingData | null>(null);
+  const [bookingError, setBookingError] = React.useState<string | null>(null);
+
+  // Get auth context
+  const { isAuthenticated, user, requiresAuth } = useAuth();
 
   // Update URL when search params change
   const updateUrl = React.useCallback(
@@ -469,6 +484,8 @@ export function PropertyDetails({
   }, [selectedRooms, property]);
 
   const handleBooking = async () => {
+    setBookingError(null);
+
     if (
       !property ||
       !dateRange?.from ||
@@ -478,9 +495,13 @@ export function PropertyDetails({
       return;
     }
 
-    if (!guestName || !guestEmail) {
-      alert("Please fill in your name and email");
-      return;
+    // Validate contact data if not using authenticated booking
+    if (!authenticatedData) {
+      const validationError = validateBookingContactData(contactData);
+      if (validationError) {
+        setBookingError(validationError);
+        return;
+      }
     }
 
     setIsBooking(true);
@@ -509,15 +530,26 @@ export function PropertyDetails({
       // Send a single request with all bookings so the API can link secondary bookings to the main one
       const toDateString = (value: number | string) => String(value);
 
+      // Build booking holder based on authentication state
+      const bookingHolder = authenticatedData
+        ? authenticatedData.userType === "guest"
+          ? { guest: authenticatedData.userId }
+          : { agent: authenticatedData.userId }
+        : {
+            firstName: contactData.firstName,
+            lastName: contactData.lastName,
+            email: contactData.email,
+            phone: contactData.phone,
+            countryCode: contactData.countryCode,
+          };
+
       const bookingsPayload: CreateBookingRequestBody["bookings"] = bookingsToCreate.map((bookingRoom) => {
         const guests = bookingRoom.adults + bookingRoom.children;
         return {
           property: property.id,
           checkIn: toDateString(dateRange.from!), // API expects string
           checkOut: toDateString(dateRange.to!), // API expects string
-          guestName,
-          guestEmail,
-          guestPhone,
+          bookingHolder,
           guests,
           totalPrice: bookingRoom.price,
           status: "inquiry",
@@ -541,14 +573,29 @@ export function PropertyDetails({
         // Navigate to booking page
         router.push(`/bookings/${secretUUID}`);
       } else {
-        alert("Booking created but could not retrieve confirmation. Please check your email.");
+        setBookingError("Booking created but could not retrieve confirmation. Please check your email.");
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Failed to create booking");
+      setBookingError(e instanceof Error ? e.message : "Failed to create booking");
     } finally {
       setIsBooking(false);
     }
   };
+
+  // Check if booking form is valid
+  const isBookingFormValid = React.useMemo(() => {
+    if (authenticatedData) {
+      return true; // Authenticated users are always valid
+    }
+    // For manual contact, all required fields must be filled
+    return (
+      contactData.firstName &&
+      contactData.lastName &&
+      contactData.email &&
+      contactData.phone &&
+      contactData.countryCode
+    );
+  }, [authenticatedData, contactData]);
 
   if (isLoading) {
     return <PropertyDetailsSkeleton />;
@@ -587,7 +634,8 @@ export function PropertyDetails({
     property.longDescription?.root?.children &&
     property.longDescription.root.children.length > 0;
 
-  return (
+  // Wrap content with ProtectedRoute for agents-only websites
+  const content = (
     <div className="space-y-8 animate-fade-in-up">
       {/* Image Carousel - Full Width */}
       <div className="w-full">
@@ -829,35 +877,19 @@ export function PropertyDetails({
 
               {showBookingForm && selectedRooms.length > 0 && (
                 <div className="space-y-4 pt-4 border-t">
-                  <div className="space-y-2">
-                    <Label htmlFor="guestName">Full Name *</Label>
-                    <Input
-                      id="guestName"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="guestEmail">Email *</Label>
-                    <Input
-                      id="guestEmail"
-                      type="email"
-                      value={guestEmail}
-                      onChange={(e) => setGuestEmail(e.target.value)}
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="guestPhone">Phone (optional)</Label>
-                    <Input
-                      id="guestPhone"
-                      type="tel"
-                      value={guestPhone}
-                      onChange={(e) => setGuestPhone(e.target.value)}
-                      placeholder="+1 234 567 8900"
-                    />
-                  </div>
+                  <BookingContactForm
+                    onContactDataChange={setContactData}
+                    onAuthenticatedDataChange={setAuthenticatedData}
+                    disabled={isBooking}
+                  />
+                  
+                  {/* Booking Error */}
+                  {bookingError && (
+                    <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+                      <AlertCircleIcon className="h-4 w-4 flex-shrink-0" />
+                      <span>{bookingError}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -881,7 +913,7 @@ export function PropertyDetails({
                     className="w-full"
                     size="lg"
                     onClick={handleBooking}
-                    disabled={isBooking || !guestName || !guestEmail}
+                    disabled={isBooking || !isBookingFormValid}
                     variant={hasRequestOnlyRooms ? "outline" : "default"}
                   >
                     {isBooking
@@ -893,7 +925,10 @@ export function PropertyDetails({
                   <Button
                     variant="ghost"
                     className="w-full"
-                    onClick={() => setShowBookingForm(false)}
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      setBookingError(null);
+                    }}
                   >
                     Back
                   </Button>
@@ -1032,6 +1067,13 @@ export function PropertyDetails({
       )}
     </div>
   );
+
+  // For agents-only websites, wrap with ProtectedRoute
+  if (requiresAuth) {
+    return <ProtectedRoute>{content}</ProtectedRoute>;
+  }
+
+  return content;
 }
 
 function RoomInfoCard({

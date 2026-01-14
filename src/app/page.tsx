@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { SearchBar } from "@/components/search/SearchBar";
 import { PropertyResults } from "./PropertyResults";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProtectedContent } from "@/components/auth/ProtectedContent";
 
 interface PageProps {
   searchParams: Promise<{
@@ -15,47 +16,49 @@ export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
 
   return (
-    <main className="min-h-screen pattern-bg">
-      {/* Hero Section */}
-      <section className="relative pt-12 pb-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10 animate-fade-in-up">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
-              Find Your Perfect
-              <span className="block text-primary">Getaway</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Discover handpicked properties for your next adventure. Book with
-              confidence and create unforgettable memories.
-            </p>
-          </div>
+    <ProtectedContent>
+      <main className="min-h-screen pattern-bg">
+        {/* Hero Section */}
+        <section className="relative pt-12 pb-8 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-10 animate-fade-in-up">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
+                Find Your Perfect
+                <span className="block text-primary">Getaway</span>
+              </h1>
+              <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
+                Discover handpicked properties for your next adventure. Book with
+                confidence and create unforgettable memories.
+              </p>
+            </div>
 
-          {/* Search Bar */}
-          <div className="max-w-4xl mx-auto animate-fade-in-up animation-delay-200">
-            <Suspense fallback={<SearchBarSkeleton />}>
-              <SearchBar />
+            {/* Search Bar */}
+            <div className="max-w-4xl mx-auto animate-fade-in-up animation-delay-200">
+              <Suspense fallback={<SearchBarSkeleton />}>
+                <SearchBar />
+              </Suspense>
+            </div>
+          </div>
+        </section>
+
+        {/* Results Section */}
+        <section className="py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <Suspense fallback={<ResultsSkeleton />}>
+              <PropertyResults searchParams={params} />
             </Suspense>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Results Section */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Suspense fallback={<ResultsSkeleton />}>
-            <PropertyResults searchParams={params} />
-          </Suspense>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t border-border/50">
-        <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Lunarety. All rights reserved.</p>
-        </div>
-      </footer>
-    </main>
+        {/* Footer */}
+        <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t border-border/50">
+          <div className="max-w-7xl mx-auto text-center text-sm text-muted-foreground">
+            <p>© {new Date().getFullYear()} Lunarety. All rights reserved.</p>
+          </div>
+        </footer>
+      </main>
+    </ProtectedContent>
   );
 }
 

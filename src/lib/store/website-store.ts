@@ -3,11 +3,20 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import type { UserBaseType } from "./auth-store";
+
 // Website configuration type based on WebsiteService response
 export interface WebsiteConfig {
   id: number;
   websiteOwner: number;
   type: "platformMarketplace" | "managerMarketplace" | "ownerMarketplace";
+  /**
+   * Defines which user types can use this website
+   * - all: Anyone can browse and book without authentication
+   * - all-or-guests: Optional auth, sign-up creates guests only
+   * - agents: Required auth, agents only
+   */
+  userBaseType?: UserBaseType | null;
   platformProperties?: {
     docs?: Array<number>;
     hasNextPage?: boolean;
@@ -68,6 +77,7 @@ interface WebsiteStore {
   getLogo: () => string | null;
   getFavicon: () => string | null;
   getSeo: () => WebsiteConfig["seo"] | null;
+  getUserBaseType: () => UserBaseType | null;
 }
 
 // Cache duration: 1 hour
@@ -115,6 +125,11 @@ export const useWebsiteStore = create<WebsiteStore>()(
       getSeo: () => {
         const website = get().website;
         return website?.seo || null;
+      },
+
+      getUserBaseType: () => {
+        const website = get().website;
+        return website?.userBaseType || null;
       },
     }),
     {

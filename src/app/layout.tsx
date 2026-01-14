@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import "./globals.css";
 import { WebsiteProvider } from "@/components/providers/WebsiteProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
+import { Header } from "@/components/layout/Header";
 import { getWebsiteConfig } from "@/lib/actions/api";
 
 const outfit = Outfit({
@@ -61,7 +63,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
-        <WebsiteProvider>{children}</WebsiteProvider>
+        <WebsiteProvider>
+          <AuthProvider>
+            <Header />
+            {children}
+          </AuthProvider>
+        </WebsiteProvider>
       </body>
     </html>
   );

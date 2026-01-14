@@ -7,6 +7,7 @@ import { AvailabilityService } from "@/lib/api/generated/services/AvailabilitySe
 import { PropertiesService } from "@/lib/api/generated/services/PropertiesService";
 import { BookingsService } from "@/lib/api/generated/services/BookingsService";
 import { WebsiteService } from "@/lib/api/generated/services/WebsiteService";
+import { AuthenticationService } from "@/lib/api/generated/services/AuthenticationService";
 import type { RoomOccupancy } from "@/lib/api/generated/models/RoomOccupancy";
 import { WebsiteType } from "@/lib/api/generated/models/WebsiteType";
 
@@ -302,5 +303,183 @@ export async function getWebsiteConfig() {
   } catch (error) {
     console.error("Error validating website:", error);
     throw error;
+  }
+}
+
+// Authentication actions
+export interface SignInData {
+  email: string;
+  password: string;
+}
+
+export interface SignUpData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  country: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  user?: {
+    id: number;
+    email: string;
+    type: "agent" | "guest";
+    firstName?: string | null;
+    lastName?: string | null;
+    phone?: string | null;
+    country?: string | null;
+  };
+  token?: string;
+  error?: string;
+}
+
+export async function signIn(data: SignInData): Promise<AuthResult> {
+  try {
+    const response = await AuthenticationService.signIn(WEBSITE_API_KEY, {
+      email: data.email,
+      password: data.password,
+    });
+
+    if (response.success && response.user && response.token) {
+      return {
+        success: true,
+        user: {
+          id: response.user.id!,
+          email: response.user.email!,
+          type: response.user.type!,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          phone: response.user.phone,
+          country: response.user.country,
+        },
+        token: response.token,
+      };
+    }
+
+    return {
+      success: false,
+      error: "Invalid credentials",
+    };
+  } catch (error) {
+    console.error("Error signing in:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to sign in",
+    };
+  }
+}
+
+export async function signUp(data: SignUpData): Promise<AuthResult> {
+  try {
+    const response = await AuthenticationService.signUp(WEBSITE_API_KEY, {
+      email: data.email,
+      password: data.password,
+      type: "guest", // Always create guest accounts on sign-up
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      country: data.country,
+    });
+
+    if (response.success && response.user && response.token) {
+      return {
+        success: true,
+        user: {
+          id: response.user.id!,
+          email: response.user.email!,
+          type: response.user.type!,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          phone: response.user.phone,
+          country: response.user.country,
+        },
+        token: response.token,
+      };
+    }
+
+    return {
+      success: false,
+      error: "Failed to create account",
+    };
+  } catch (error) {
+    console.error("Error signing up:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create account",
+    };
+  }
+}
+
+export async function verifyAuth(token: string): Promise<AuthResult> {
+  try {
+    const response = await AuthenticationService.verifyAuth(
+      WEBSITE_API_KEY,
+      `Bearer ${token}`
+    );
+
+    if (response.success && response.user) {
+      return {
+        success: true,
+        user: {
+          id: response.user.id!,
+          email: response.user.email!,
+          type: response.user.type!,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          phone: response.user.phone,
+          country: response.user.country,
+        },
+      };
+    }
+
+    return {
+      success: false,
+      error: "Invalid or expired token",
+    };
+  } catch (error) {
+    console.error("Error verifying auth:", error);
+    return {
+      success: false,
+      error: "Invalid or expired token",
+    };
+  }
+}
+
+export async function refreshAuth(token: string): Promise<AuthResult> {
+  try {
+    const response = await AuthenticationService.refreshAuth(
+      WEBSITE_API_KEY,
+      `Bearer ${token}`
+    );
+
+    if (response.success && response.user && response.token) {
+      return {
+        success: true,
+        user: {
+          id: response.user.id!,
+          email: response.user.email!,
+          type: response.user.type!,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          phone: response.user.phone,
+          country: response.user.country,
+        },
+        token: response.token,
+      };
+    }
+
+    return {
+      success: false,
+      error: "Failed to refresh token",
+    };
+  } catch (error) {
+    console.error("Error refreshing auth:", error);
+    return {
+      success: false,
+      error: "Failed to refresh token",
+    };
   }
 }
