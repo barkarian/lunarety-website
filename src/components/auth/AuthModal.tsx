@@ -54,7 +54,7 @@ export function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden" showCloseButton={false}>
         <DialogHeader className="sr-only">
           <DialogTitle>
             {title || (mode === "sign-in" ? "Sign In" : "Create Account")}
@@ -113,14 +113,14 @@ export function BookingAuthModal({
   onSuccess,
   onContinueAsGuest,
 }: BookingAuthModalProps) {
-  const [mode, setMode] = React.useState<AuthMode>("sign-in");
+  const [mode, setMode] = React.useState<AuthMode>("sign-up");
   const { getUserBaseType } = useWebsiteStore();
   const userBaseType = getUserBaseType();
 
-  // Reset mode when modal opens
+  // Reset mode when modal opens - default to sign-up for new users
   React.useEffect(() => {
     if (open) {
-      setMode("sign-in");
+      setMode("sign-up");
     }
   }, [open]);
 
@@ -135,15 +135,15 @@ export function BookingAuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden" showCloseButton={false}>
         <DialogHeader className="sr-only">
           <DialogTitle>
-            {mode === "sign-in" ? "Sign In to Continue" : "Create Account"}
+            {mode === "sign-up" ? "Create Account" : "Sign In to Continue"}
           </DialogTitle>
           <DialogDescription>
-            {mode === "sign-in"
-              ? "Sign in to manage your bookings more easily"
-              : "Create an account for easier booking management"}
+            {mode === "sign-up"
+              ? "Create an account for easier booking management"
+              : "Sign in to manage your bookings more easily"}
           </DialogDescription>
         </DialogHeader>
 
@@ -160,17 +160,17 @@ export function BookingAuthModal({
 
         {/* Auth Forms */}
         <div className="pt-2">
-          {mode === "sign-in" ? (
+          {mode === "sign-up" ? (
             <div>
-              <SignInForm
+              <SignUpForm
                 onSuccess={handleSuccess}
-                onSwitchToSignUp={showSignUp ? () => setMode("sign-up") : undefined}
-                showSwitchToSignUp={showSignUp}
+                onSwitchToSignIn={() => setMode("sign-in")}
+                showSwitchToSignIn={true}
               />
               
               {/* Continue as guest option */}
               {showContinueAsGuest && (
-                <div className="p-6 pt-0 border-t mt-4">
+                <div className="px-6 pb-6 pt-0 border-t mt-4">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-3">
                       Or continue without an account
@@ -190,11 +190,34 @@ export function BookingAuthModal({
               )}
             </div>
           ) : (
-            <SignUpForm
-              onSuccess={handleSuccess}
-              onSwitchToSignIn={() => setMode("sign-in")}
-              showSwitchToSignIn={true}
-            />
+            <div>
+              <SignInForm
+                onSuccess={handleSuccess}
+                onSwitchToSignUp={showSignUp ? () => setMode("sign-up") : undefined}
+                showSwitchToSignUp={showSignUp}
+              />
+              
+              {/* Continue as guest option */}
+              {showContinueAsGuest && (
+                <div className="px-6 pb-6 pt-0 border-t mt-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Or continue without an account
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        onContinueAsGuest?.();
+                        onOpenChange(false);
+                      }}
+                      className="w-full"
+                    >
+                      Continue as Guest
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </DialogContent>
