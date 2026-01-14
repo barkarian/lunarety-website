@@ -495,8 +495,12 @@ export function PropertyDetails({
       return;
     }
 
-    // Validate contact data if not using authenticated booking
-    if (!authenticatedData) {
+    // Validate contact data:
+    // - Always required when no authenticated user
+    // - Required when agent is logged in (they book on behalf of guests)
+    // - Not required when guest user is logged in (their own info is used)
+    const needsGuestContactInfo = !authenticatedData || authenticatedData.userType === "agent";
+    if (needsGuestContactInfo) {
       const validationError = validateBookingContactData(contactData);
       if (validationError) {
         setBookingError(validationError);
@@ -531,10 +535,21 @@ export function PropertyDetails({
       const toDateString = (value: number | string) => String(value);
 
       // Build booking holder based on authentication state
+      // - Guest user: just their user ID
+      // - Agent user: agent ID + guest contact info (agent books on behalf of guest)
+      // - No auth: guest contact info only
       const bookingHolder = authenticatedData
         ? authenticatedData.userType === "guest"
           ? { guest: authenticatedData.userId }
-          : { agent: authenticatedData.userId }
+          : {
+              // Agent booking: include agent ID + guest contact info
+              agent: authenticatedData.userId,
+              firstName: contactData.firstName,
+              lastName: contactData.lastName,
+              email: contactData.email,
+              phone: contactData.phone,
+              countryCode: contactData.countryCode,
+            }
         : {
             firstName: contactData.firstName,
             lastName: contactData.lastName,
@@ -584,10 +599,11 @@ export function PropertyDetails({
 
   // Check if booking form is valid
   const isBookingFormValid = React.useMemo(() => {
-    if (authenticatedData) {
-      return true; // Authenticated users are always valid
+    // Guest users with auth: their info is used, no form needed
+    if (authenticatedData && authenticatedData.userType === "guest") {
+      return true;
     }
-    // For manual contact, all required fields must be filled
+    // Agents or unauthenticated: must fill guest contact info
     return (
       contactData.firstName &&
       contactData.lastName &&

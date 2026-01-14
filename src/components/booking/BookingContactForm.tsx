@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { User, Mail, Phone, CheckCircle, LogIn } from "lucide-react";
+import { User, Mail, Phone, CheckCircle, LogIn, Briefcase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export function BookingContactForm({
   const [showAuthModal, setShowAuthModal] = React.useState(false);
   const [useManualForm, setUseManualForm] = React.useState(false);
 
-  // Form state for manual entry
+  // Form state for manual entry (guest contact info)
   const [formData, setFormData] = React.useState<BookingContactData>({
     firstName: initialData?.firstName || "",
     lastName: initialData?.lastName || "",
@@ -60,12 +60,25 @@ export function BookingContactForm({
   }, [formData, onContactDataChange]);
 
   // Notify parent about authenticated user data
+  // For agents: always pass agent info (they book on behalf of guests)
+  // For guests: only pass when not using manual form
   React.useEffect(() => {
-    if (isAuthenticated && user && !useManualForm) {
-      onAuthenticatedDataChange?.({
-        userId: user.id,
-        userType: user.type,
-      });
+    if (isAuthenticated && user) {
+      // Agents always pass their ID (they're booking on behalf of guests)
+      if (user.type === "agent") {
+        onAuthenticatedDataChange?.({
+          userId: user.id,
+          userType: user.type,
+        });
+      } else if (!useManualForm) {
+        // Guest users only when not using manual form
+        onAuthenticatedDataChange?.({
+          userId: user.id,
+          userType: user.type,
+        });
+      } else {
+        onAuthenticatedDataChange?.(null);
+      }
     } else {
       onAuthenticatedDataChange?.(null);
     }
@@ -101,8 +114,47 @@ export function BookingContactForm({
     return <ManualContactForm formData={formData} onInputChange={handleInputChange} onCountryChange={handleCountryChange} disabled={disabled} />;
   }
 
-  // If authenticated and not using manual form, show logged-in state
-  if (isAuthenticated && user && !useManualForm) {
+  // If authenticated as AGENT, show agent badge + guest contact form
+  // Agents book on behalf of guests, so they need to enter guest info
+  if (isAuthenticated && user && user.type === "agent") {
+    return (
+      <div className="space-y-4">
+        {/* Agent indicator */}
+        <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Briefcase className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                Booking as Agent: {user.firstName} {user.lastName}
+              </p>
+              <p className="text-xs text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="capitalize">
+            Agent
+          </Badge>
+        </div>
+
+        {/* Guest contact form - agents must enter guest info */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">
+            Enter guest contact details:
+          </p>
+          <ManualContactForm
+            formData={formData}
+            onInputChange={handleInputChange}
+            onCountryChange={handleCountryChange}
+            disabled={disabled}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // If authenticated as GUEST and not using manual form, show logged-in state
+  if (isAuthenticated && user && user.type === "guest" && !useManualForm) {
     const country = user.country ? getCountryByCode(user.country) : null;
 
     return (
