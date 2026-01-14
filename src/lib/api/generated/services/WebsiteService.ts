@@ -75,6 +75,10 @@ export class WebsiteService {
              */
             website?: {
                 /**
+                 * The name of the website
+                 */
+                websiteName: string;
+                /**
                  * Media ID for the logo
                  */
                 logo?: number | null;
