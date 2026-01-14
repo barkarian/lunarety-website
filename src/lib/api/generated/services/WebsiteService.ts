@@ -30,6 +30,10 @@ export class WebsiteService {
              */
             type: 'platformMarketplace' | 'managerMarketplace' | 'ownerMarketplace';
             /**
+             * Defines which user types can use this website (all = anyone, all-or-guests = guests and agents, agents = agents only)
+             */
+            userBaseType?: 'all' | 'all-or-guests' | 'agents' | null;
+            /**
              * Platform properties (only for platformMarketplace type)
              */
             platformProperties?: {

@@ -20,6 +20,7 @@ export type { RoomPrice } from './models/RoomPrice';
 export type { websiteApiKey } from './models/websiteApiKey';
 export { WebsiteType } from './models/WebsiteType';
 
+export { AuthenticationService } from './services/AuthenticationService';
 export { AvailabilityService } from './services/AvailabilityService';
 export { BookingsService } from './services/BookingsService';
 export { PropertiesService } from './services/PropertiesService';

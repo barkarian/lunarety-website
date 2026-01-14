@@ -96,11 +96,37 @@ export class BookingsService {
              * Partial booking data to update (only bookingHolder allowed)
              */
             booking: {
+                /**
+                 * Booking holder information. Either provide guest ID or manual contact details.
+                 */
                 bookingHolder?: {
+                    /**
+                     * Guest user ID - if provided, links booking to existing guest user and clears manual contact fields
+                     */
+                    guest?: number;
+                    /**
+                     * Agent user ID - if provided, links booking to this agent
+                     */
+                    agent?: number;
+                    /**
+                     * First name (ignored/cleared if guest is provided)
+                     */
                     firstName?: string;
+                    /**
+                     * Last name (ignored/cleared if guest is provided)
+                     */
                     lastName?: string;
+                    /**
+                     * Email (ignored/cleared if guest is provided)
+                     */
                     email?: string;
+                    /**
+                     * Phone (ignored/cleared if guest is provided)
+                     */
                     phone?: string;
+                    /**
+                     * Country code (ignored/cleared if guest is provided)
+                     */
                     countryCode?: string;
                 };
             };
@@ -155,6 +181,39 @@ export class BookingsService {
                 guestName?: string;
                 guestEmail?: string;
                 guestPhone?: string;
+                /**
+                 * Booking holder information. Either provide guest ID or manual contact details.
+                 */
+                bookingHolder?: {
+                    /**
+                     * Guest user ID - if provided, links booking to existing guest user and ignores manual contact fields
+                     */
+                    guest?: number;
+                    /**
+                     * Agent user ID - if provided, links booking to this agent
+                     */
+                    agent?: number;
+                    /**
+                     * First name (ignored if guest is provided)
+                     */
+                    firstName?: string;
+                    /**
+                     * Last name (ignored if guest is provided)
+                     */
+                    lastName?: string;
+                    /**
+                     * Email (ignored if guest is provided)
+                     */
+                    email?: string;
+                    /**
+                     * Phone (ignored if guest is provided)
+                     */
+                    phone?: string;
+                    /**
+                     * Country code (ignored if guest is provided)
+                     */
+                    countryCode?: string;
+                };
                 guests?: number;
                 totalPrice?: number;
                 status?: 'confirmed' | 'cancelled' | 'inquiry' | 'on-hold' | 'no-show';
