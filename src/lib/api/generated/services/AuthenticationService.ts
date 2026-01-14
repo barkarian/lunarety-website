@@ -25,6 +25,8 @@ export class AuthenticationService {
             type?: 'agent' | 'guest';
             firstName?: string | null;
             lastName?: string | null;
+            phone?: string | null;
+            country?: string | null;
         };
         /**
          * The website ID the user is authenticated for
@@ -68,6 +70,10 @@ export class AuthenticationService {
             id?: number;
             email?: string;
             type?: 'agent' | 'guest';
+            firstName?: string | null;
+            lastName?: string | null;
+            phone?: string | null;
+            country?: string | null;
         };
     }> {
         return __request(OpenAPI, {
@@ -114,6 +120,8 @@ export class AuthenticationService {
             type?: 'agent' | 'guest';
             firstName?: string | null;
             lastName?: string | null;
+            phone?: string | null;
+            country?: string | null;
         };
         /**
          * JWT token for authentication
@@ -160,13 +168,21 @@ export class AuthenticationService {
              */
             type: 'agent' | 'guest';
             /**
-             * User's first name (optional)
+             * User's first name
              */
-            firstName?: string;
+            firstName: string;
             /**
-             * User's last name (optional)
+             * User's last name
              */
-            lastName?: string;
+            lastName: string;
+            /**
+             * User's phone number
+             */
+            phone: string;
+            /**
+             * User's country code (e.g., US, GR, UK)
+             */
+            country: string;
         },
     ): CancelablePromise<{
         success?: boolean;
@@ -174,8 +190,10 @@ export class AuthenticationService {
             id?: number;
             email?: string;
             type?: 'agent' | 'guest';
-            firstName?: string | null;
-            lastName?: string | null;
+            firstName?: string;
+            lastName?: string;
+            phone?: string;
+            country?: string;
         };
         /**
          * JWT token for authentication

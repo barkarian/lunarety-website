@@ -182,11 +182,11 @@ export class BookingsService {
                 guestEmail?: string;
                 guestPhone?: string;
                 /**
-                 * Booking holder information. Either provide guest ID or manual contact details.
+                 * Booking holder information. Either provide guest ID OR all manual contact details (firstName, lastName, email, phone, countryCode). When guest ID is not provided, all contact fields are REQUIRED.
                  */
                 bookingHolder?: {
                     /**
-                     * Guest user ID - if provided, links booking to existing guest user and ignores manual contact fields
+                     * Guest user ID - if provided, links booking to existing guest user and manual contact fields are ignored
                      */
                     guest?: number;
                     /**
@@ -194,23 +194,23 @@ export class BookingsService {
                      */
                     agent?: number;
                     /**
-                     * First name (ignored if guest is provided)
+                     * First name (REQUIRED if guest is not provided)
                      */
                     firstName?: string;
                     /**
-                     * Last name (ignored if guest is provided)
+                     * Last name (REQUIRED if guest is not provided)
                      */
                     lastName?: string;
                     /**
-                     * Email (ignored if guest is provided)
+                     * Email (REQUIRED if guest is not provided)
                      */
                     email?: string;
                     /**
-                     * Phone (ignored if guest is provided)
+                     * Phone number (REQUIRED if guest is not provided)
                      */
                     phone?: string;
                     /**
-                     * Country code (ignored if guest is provided)
+                     * Country code e.g. US, GR, UK (REQUIRED if guest is not provided)
                      */
                     countryCode?: string;
                 };
