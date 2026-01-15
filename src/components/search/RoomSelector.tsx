@@ -24,8 +24,41 @@ export function RoomSelector({
   className,
 }: RoomSelectorProps) {
   const [open, setOpen] = React.useState(false);
+  // Local state for editing - only commits to parent on "Done"
+  const [localRooms, setLocalRooms] = React.useState<RoomOccupancy[]>(rooms);
+
+  // Sync local state when external rooms change (e.g., from URL)
+  React.useEffect(() => {
+    if (!open) {
+      setLocalRooms(rooms);
+    }
+  }, [rooms, open]);
+
+  // Reset local state when popover opens
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) {
+      // When opening, sync local state with current rooms
+      setLocalRooms(rooms);
+    }
+    setOpen(newOpen);
+  };
+
+  // Commit changes and close
+  const handleDone = () => {
+    // Only call onRoomsChange if there are actual changes
+    const hasChanges = JSON.stringify(localRooms) !== JSON.stringify(rooms);
+    if (hasChanges) {
+      onRoomsChange(localRooms);
+    }
+    setOpen(false);
+  };
 
   const totalGuests = rooms.reduce(
+    (acc, room) => acc + room.adults + room.children,
+    0
+  );
+
+  const localTotalGuests = localRooms.reduce(
     (acc, room) => acc + room.adults + room.children,
     0
   );
@@ -35,33 +68,33 @@ export function RoomSelector({
     field: "adults" | "children",
     delta: number
   ) => {
-    const newRooms = [...rooms];
+    const newRooms = [...localRooms];
     const newValue = newRooms[index][field] + delta;
 
     if (field === "adults" && newValue >= 1 && newValue <= 6) {
-      newRooms[index].adults = newValue;
-      onRoomsChange(newRooms);
+      newRooms[index] = { ...newRooms[index], adults: newValue };
+      setLocalRooms(newRooms);
     } else if (field === "children" && newValue >= 0 && newValue <= 4) {
-      newRooms[index].children = newValue;
-      onRoomsChange(newRooms);
+      newRooms[index] = { ...newRooms[index], children: newValue };
+      setLocalRooms(newRooms);
     }
   };
 
   const addRoom = () => {
-    if (rooms.length < 5) {
-      onRoomsChange([...rooms, { adults: 2, children: 0 }]);
+    if (localRooms.length < 5) {
+      setLocalRooms([...localRooms, { adults: 2, children: 0 }]);
     }
   };
 
   const removeRoom = (index: number) => {
-    if (rooms.length > 1) {
-      const newRooms = rooms.filter((_, i) => i !== index);
-      onRoomsChange(newRooms);
+    if (localRooms.length > 1) {
+      const newRooms = localRooms.filter((_, i) => i !== index);
+      setLocalRooms(newRooms);
     }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -84,14 +117,21 @@ export function RoomSelector({
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" align="start">
         <div className="space-y-4">
-          {rooms.map((room, index) => (
+          {/* Preview of changes */}
+          {(localTotalGuests !== totalGuests || localRooms.length !== rooms.length) && (
+            <div className="text-xs text-muted-foreground bg-accent/50 rounded-lg px-3 py-2">
+              Preview: {localTotalGuests} guest{localTotalGuests !== 1 ? "s" : ""}, {localRooms.length} room{localRooms.length !== 1 ? "s" : ""}
+            </div>
+          )}
+
+          {localRooms.map((room, index) => (
             <div
               key={index}
               className="space-y-3 pb-4 border-b border-border last:border-0 last:pb-0"
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium text-sm">Room {index + 1}</span>
-                {rooms.length > 1 && (
+                {localRooms.length > 1 && (
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -165,7 +205,7 @@ export function RoomSelector({
             </div>
           ))}
 
-          {rooms.length < 5 && (
+          {localRooms.length < 5 && (
             <Button
               variant="outline"
               onClick={addRoom}
@@ -177,7 +217,7 @@ export function RoomSelector({
             </Button>
           )}
 
-          <Button onClick={() => setOpen(false)} className="w-full">
+          <Button onClick={handleDone} className="w-full">
             Done
           </Button>
         </div>

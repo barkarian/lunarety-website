@@ -999,6 +999,7 @@ export function PropertyDetails({
                       images={selectedRoomForModal.images}
                       aspectRatio="video"
                       showThumbnails={selectedRoomForModal.images.length > 3}
+                      peekMode={true}
                     />
                   </div>
                 )}

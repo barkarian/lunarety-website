@@ -15,6 +15,12 @@ interface ImageCarouselProps {
   autoPlayInterval?: number;
   /** Fixed maximum height in pixels. When set, overrides aspect ratio for a consistent height. */
   maxHeight?: number;
+  /** 
+   * When true, shows a "peek" of adjacent images to indicate scrollability.
+   * On mobile: no arrows, only peek effect with touch/drag scrolling
+   * On desktop: arrows visible on hover with peek effect
+   */
+  peekMode?: boolean;
 }
 
 export function ImageCarousel({
@@ -25,9 +31,16 @@ export function ImageCarousel({
   autoPlay = false,
   autoPlayInterval = 5000,
   maxHeight,
+  peekMode = false,
 }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isHovered, setIsHovered] = React.useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  
+  // Touch/drag handling for peek mode
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragStartX, setDragStartX] = React.useState(0);
+  const [dragOffset, setDragOffset] = React.useState(0);
 
   const aspectClasses = {
     video: "aspect-video",
@@ -40,6 +53,10 @@ export function ImageCarousel({
     ? { maxHeight: `${maxHeight}px` }
     : {};
 
+  // In peek mode, each slide takes ~85% width so adjacent images peek through
+  const slideWidthPercent = peekMode ? 85 : 100;
+  const gapPercent = peekMode ? 2 : 0;
+
   const goToPrevious = React.useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   }, [images.length]);
@@ -51,6 +68,70 @@ export function ImageCarousel({
   const goToSlide = (index: number) => {
     setCurrentIndex(index);
   };
+
+  // Touch handlers for peek mode
+  const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
+    if (!peekMode) return;
+    setIsDragging(true);
+    setDragStartX(e.touches[0].clientX);
+    setDragOffset(0);
+  }, [peekMode]);
+
+  const handleTouchMove = React.useCallback((e: React.TouchEvent) => {
+    if (!isDragging || !peekMode) return;
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - dragStartX;
+    setDragOffset(diff);
+  }, [isDragging, dragStartX, peekMode]);
+
+  const handleTouchEnd = React.useCallback(() => {
+    if (!isDragging || !peekMode) return;
+    setIsDragging(false);
+    
+    // Determine if we should navigate based on drag distance
+    const threshold = 50;
+    if (dragOffset > threshold && currentIndex > 0) {
+      goToPrevious();
+    } else if (dragOffset < -threshold && currentIndex < images.length - 1) {
+      goToNext();
+    }
+    setDragOffset(0);
+  }, [isDragging, dragOffset, currentIndex, goToPrevious, goToNext, images.length, peekMode]);
+
+  // Mouse drag handlers for peek mode on desktop
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    if (!peekMode) return;
+    setIsDragging(true);
+    setDragStartX(e.clientX);
+    setDragOffset(0);
+  }, [peekMode]);
+
+  const handleMouseMove = React.useCallback((e: React.MouseEvent) => {
+    if (!isDragging || !peekMode) return;
+    const currentX = e.clientX;
+    const diff = currentX - dragStartX;
+    setDragOffset(diff);
+  }, [isDragging, dragStartX, peekMode]);
+
+  const handleMouseUp = React.useCallback(() => {
+    if (!isDragging || !peekMode) return;
+    setIsDragging(false);
+    
+    const threshold = 50;
+    if (dragOffset > threshold && currentIndex > 0) {
+      goToPrevious();
+    } else if (dragOffset < -threshold && currentIndex < images.length - 1) {
+      goToNext();
+    }
+    setDragOffset(0);
+  }, [isDragging, dragOffset, currentIndex, goToPrevious, goToNext, images.length, peekMode]);
+
+  const handleMouseLeave = React.useCallback(() => {
+    if (isDragging) {
+      handleMouseUp();
+    }
+    setIsHovered(false);
+  }, [isDragging, handleMouseUp]);
 
   // Auto-play functionality
   React.useEffect(() => {
@@ -114,49 +195,98 @@ export function ImageCarousel({
     );
   }
 
+  // Calculate transform for peek mode
+  const calculateTransform = () => {
+    if (peekMode) {
+      // In peek mode, center the current slide with padding for peek effect
+      // Each slide is 85% width + 2% gap = 87% per slide
+      const slideStep = slideWidthPercent + gapPercent;
+      // Start with offset to center first slide (leave space for peek on left side)
+      const initialOffset = (100 - slideWidthPercent) / 2;
+      const baseTransform = -currentIndex * slideStep + initialOffset;
+      // Add drag offset as percentage of container width
+      const containerWidth = containerRef.current?.offsetWidth || 1;
+      const dragPercent = (dragOffset / containerWidth) * 100;
+      return `translateX(calc(${baseTransform}% + ${dragPercent}%))`;
+    }
+    return `translateX(-${currentIndex * 100}%)`;
+  };
+
   return (
     <div
       className={cn("relative w-full group", className)}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Main Image */}
       <div
+        ref={containerRef}
         className={cn(
           "relative w-full rounded-xl overflow-hidden bg-muted",
-          aspectClasses[aspectRatio]
+          aspectClasses[aspectRatio],
+          peekMode && "cursor-grab active:cursor-grabbing"
         )}
         style={containerStyle}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
       >
         <div
-          className="flex transition-transform duration-500 ease-out h-full"
-          style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+          className={cn(
+            "flex h-full",
+            isDragging ? "transition-none" : "transition-transform duration-500 ease-out",
+            peekMode && "gap-[2%]"
+          )}
+          style={{ 
+            transform: calculateTransform(),
+          }}
         >
           {images.map((image, index) => (
             <div
               key={index}
-              className="relative w-full h-full flex-shrink-0"
-              style={{ minWidth: "100%" }}
+              className={cn(
+                "relative h-full flex-shrink-0",
+                peekMode ? "rounded-lg overflow-hidden" : ""
+              )}
+              style={{ 
+                minWidth: peekMode ? `${slideWidthPercent}%` : "100%",
+                width: peekMode ? `${slideWidthPercent}%` : "100%",
+              }}
             >
               <Image
                 src={image.url}
                 alt={image.alt || `Image ${index + 1}`}
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
-                className="object-contain"
+                className={cn(
+                  peekMode ? "object-cover" : "object-contain",
+                  "select-none pointer-events-none"
+                )}
                 priority={index === 0}
                 loading={index === 0 ? "eager" : "lazy"}
+                draggable={false}
               />
             </div>
           ))}
         </div>
 
-        {/* Navigation Arrows */}
+        {/* Navigation Arrows - hidden on mobile in peek mode */}
         <Button
           variant="secondary"
           size="icon"
-          onClick={goToPrevious}
-          className="absolute left-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-lg h-10 w-10 rounded-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToPrevious();
+          }}
+          className={cn(
+            "absolute left-3 top-1/2 -translate-y-1/2 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-lg h-10 w-10 rounded-full",
+            peekMode 
+              ? "hidden md:flex opacity-0 group-hover:opacity-100" 
+              : "opacity-0 group-hover:opacity-100"
+          )}
           aria-label="Previous image"
         >
           <ChevronLeftIcon className="h-5 w-5" />
@@ -165,8 +295,16 @@ export function ImageCarousel({
         <Button
           variant="secondary"
           size="icon"
-          onClick={goToNext}
-          className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-lg h-10 w-10 rounded-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            goToNext();
+          }}
+          className={cn(
+            "absolute right-3 top-1/2 -translate-y-1/2 transition-opacity bg-background/80 backdrop-blur-sm hover:bg-background/90 shadow-lg h-10 w-10 rounded-full",
+            peekMode 
+              ? "hidden md:flex opacity-0 group-hover:opacity-100" 
+              : "opacity-0 group-hover:opacity-100"
+          )}
           aria-label="Next image"
         >
           <ChevronRightIcon className="h-5 w-5" />
@@ -182,7 +320,10 @@ export function ImageCarousel({
           {images.map((_, index) => (
             <button
               key={index}
-              onClick={() => goToSlide(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                goToSlide(index);
+              }}
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
                 index === currentIndex
