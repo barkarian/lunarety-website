@@ -10,11 +10,12 @@ export class PackagesService {
      * Get Package by ID
      * Retrieves a single website package by its ID.
      *
-     * **Note:** This endpoint does not validate website ownership or type.
-     * It directly fetches the package by ID.
+     * **Note:** This endpoint validates the package belongs to the website via websiteApiKey.
      *
      * **Population:**
-     * - All relationships are returned as IDs only (depth=0)
+     * - Location fields (departures, destination, linkedToDepartures) are populated as full objects
+     * - Media fields (content.media) are populated as full objects with URLs
+     * - Properties in dateRanges are NOT populated (returned as IDs)
      *
      * @param websiteApiKey The unique API key for the website integration
      * @param packageId The unique identifier for the package
@@ -43,17 +44,25 @@ export class PackagesService {
              */
             order?: number;
             /**
-             * Departure location IDs
+             * Populated departure location objects
              */
-            departures?: Array<number>;
+            departures?: Array<{
+                id?: number;
+                name?: string;
+                type?: string;
+            }>;
             /**
              * Default departure information (1:1 with departures)
              */
             defaultDepartInfo?: Array<string>;
             /**
-             * Destination location ID
+             * Populated destination location object
              */
-            destination?: number;
+            destination?: {
+                id?: number;
+                name?: string;
+                type?: string;
+            };
             /**
              * Default return information
              */
@@ -70,6 +79,13 @@ export class PackagesService {
                 children?: number;
                 group?: string;
                 total?: number;
+                /**
+                 * Optional - Populated location objects this offer is linked to
+                 */
+                linkedToDepartures?: Array<{
+                    id?: number;
+                    name?: string;
+                }>;
             }>;
             /**
              * Available date ranges (properties NOT populated)
@@ -94,7 +110,19 @@ export class PackagesService {
                 };
                 offers?: {
                     hasCustomOffers?: boolean;
-                    customOffers?: Array<Record<string, any>>;
+                    customOffers?: Array<{
+                        adults?: number;
+                        children?: number;
+                        group?: string;
+                        total?: number;
+                        /**
+                         * Optional - Populated location objects this offer is linked to
+                         */
+                        linkedToDepartures?: Array<{
+                            id?: number;
+                            name?: string;
+                        }>;
+                    }>;
                 };
             }>;
             content?: {
@@ -104,10 +132,20 @@ export class PackagesService {
                  */
                 description?: Record<string, any>;
                 /**
-                 * Media IDs
+                 * Populated media objects
                  */
-                media?: Array<number>;
-                durationInDaysOptions?: number | null;
+                media?: Array<{
+                    id?: number;
+                    url?: string;
+                    filename?: string;
+                    mimeType?: string;
+                    width?: number;
+                    height?: number;
+                }>;
+                /**
+                 * Array of unique duration options (in days) derived from date ranges
+                 */
+                durationInDaysOptions?: Array<number> | null;
                 availabilityPeriod?: {
                     /**
                      * Earliest available date (YYYYMMDD)
@@ -153,7 +191,9 @@ export class PackagesService {
      *
      * **Important Notes:**
      * - Packages with `content.availabilityPeriod.to` in the past are automatically excluded
-     * - All relationships are returned as IDs only (depth=0) to reduce bandwidth
+     * - Location fields (departures, destination, linkedToDepartures) are populated as full objects
+     * - Media fields (content.media) are populated as full objects with URLs
+     * - Properties in dateRanges are NOT populated (returned as IDs)
      *
      * **Date Format:**
      * - All dates use YYYYMMDD format as numbers (e.g., 20251011 for October 11, 2025)
@@ -211,7 +251,7 @@ export class PackagesService {
         },
     ): CancelablePromise<{
         /**
-         * Array of website packages with populated locations
+         * Array of website packages with populated locations and media
          */
         packages: Array<{
             /**
@@ -231,17 +271,25 @@ export class PackagesService {
              */
             order?: number;
             /**
-             * Departure location IDs
+             * Populated departure location objects
              */
-            departures?: Array<number>;
+            departures?: Array<{
+                id?: number;
+                name?: string;
+                type?: string;
+            }>;
             /**
              * Default departure information (1:1 with departures)
              */
             defaultDepartInfo?: Array<string>;
             /**
-             * Destination location ID
+             * Populated destination location object
              */
-            destination?: number;
+            destination?: {
+                id?: number;
+                name?: string;
+                type?: string;
+            };
             /**
              * Default return information
              */
@@ -258,6 +306,13 @@ export class PackagesService {
                 children?: number;
                 group?: string;
                 total?: number;
+                /**
+                 * Optional - Populated location objects this offer is linked to
+                 */
+                linkedToDepartures?: Array<{
+                    id?: number;
+                    name?: string;
+                }>;
             }>;
             /**
              * Available date ranges (properties NOT populated)
@@ -282,7 +337,19 @@ export class PackagesService {
                 };
                 offers?: {
                     hasCustomOffers?: boolean;
-                    customOffers?: Array<Record<string, any>>;
+                    customOffers?: Array<{
+                        adults?: number;
+                        children?: number;
+                        group?: string;
+                        total?: number;
+                        /**
+                         * Optional - Populated location objects this offer is linked to
+                         */
+                        linkedToDepartures?: Array<{
+                            id?: number;
+                            name?: string;
+                        }>;
+                    }>;
                 };
             }>;
             content?: {
@@ -292,10 +359,20 @@ export class PackagesService {
                  */
                 description?: Record<string, any>;
                 /**
-                 * Media IDs
+                 * Populated media objects
                  */
-                media?: Array<number>;
-                durationInDaysOptions?: number | null;
+                media?: Array<{
+                    id?: number;
+                    url?: string;
+                    filename?: string;
+                    mimeType?: string;
+                    width?: number;
+                    height?: number;
+                }>;
+                /**
+                 * Array of unique duration options (in days) derived from date ranges
+                 */
+                durationInDaysOptions?: Array<number> | null;
                 availabilityPeriod?: {
                     /**
                      * Earliest available date (YYYYMMDD)
