@@ -7,6 +7,140 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class PackagesService {
     /**
+     * Get Package by ID
+     * Retrieves a single website package by its ID.
+     *
+     * **Note:** This endpoint does not validate website ownership or type.
+     * It directly fetches the package by ID.
+     *
+     * **Population:**
+     * - All relationships are returned as IDs only (depth=0)
+     *
+     * @param websiteApiKey The unique API key for the website integration
+     * @param packageId The unique identifier for the package
+     * @returns any Package retrieved successfully
+     * @throws ApiError
+     */
+    public static getPackageById(
+        websiteApiKey: string,
+        packageId: string,
+    ): CancelablePromise<{
+        package: {
+            /**
+             * Package ID
+             */
+            id?: number;
+            /**
+             * Name of the package
+             */
+            packageName?: string;
+            /**
+             * Starting price
+             */
+            fromPrice?: number;
+            /**
+             * Display order
+             */
+            order?: number;
+            /**
+             * Departure location IDs
+             */
+            departures?: Array<number>;
+            /**
+             * Default departure information (1:1 with departures)
+             */
+            defaultDepartInfo?: Array<string>;
+            /**
+             * Destination location ID
+             */
+            destination?: number;
+            /**
+             * Default return information
+             */
+            defaultReturnInfo?: string;
+            meta?: {
+                transportation?: 'ship' | 'plane';
+                tags?: Array<string>;
+            };
+            /**
+             * Default pricing offers
+             */
+            defaultOffers?: Array<{
+                adults?: number;
+                children?: number;
+                group?: string;
+                total?: number;
+            }>;
+            /**
+             * Available date ranges (properties NOT populated)
+             */
+            dateRanges?: Array<{
+                /**
+                 * Start date (YYYYMMDD)
+                 */
+                from?: number;
+                /**
+                 * End date (YYYYMMDD)
+                 */
+                to?: number;
+                /**
+                 * Property IDs (not populated)
+                 */
+                properties?: Array<number>;
+                trip?: {
+                    hasCustomInfos?: boolean;
+                    customDepartInfo?: Array<string>;
+                    customReturnInfo?: string;
+                };
+                offers?: {
+                    hasCustomOffers?: boolean;
+                    customOffers?: Array<Record<string, any>>;
+                };
+            }>;
+            content?: {
+                shortDescription?: string;
+                /**
+                 * Rich text content
+                 */
+                description?: Record<string, any>;
+                /**
+                 * Media IDs
+                 */
+                media?: Array<number>;
+                durationInDaysOptions?: number | null;
+                availabilityPeriod?: {
+                    /**
+                     * Earliest available date (YYYYMMDD)
+                     */
+                    from?: number;
+                    /**
+                     * Latest available date (YYYYMMDD)
+                     */
+                    to?: number;
+                };
+            };
+            /**
+             * Website ID (not populated)
+             */
+            website?: number;
+            updatedAt?: string;
+            createdAt?: string;
+        };
+    }> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/{websiteApiKey}/packages/{packageId}',
+            path: {
+                'websiteApiKey': websiteApiKey,
+                'packageId': packageId,
+            },
+            errors: {
+                404: `Package not found`,
+                500: `Internal server error`,
+            },
+        });
+    }
+    /**
      * Get Website Packages
      * Retrieves paginated website packages for platform marketplace websites.
      * Only available for websites with type "platformMarketplace".
@@ -19,8 +153,7 @@ export class PackagesService {
      *
      * **Important Notes:**
      * - Packages with `content.availabilityPeriod.to` in the past are automatically excluded
-     * - Locations (departures, destination) are populated with depth=1
-     * - Properties within dateRanges are NOT populated to reduce bandwidth
+     * - All relationships are returned as IDs only (depth=0) to reduce bandwidth
      *
      * **Date Format:**
      * - All dates use YYYYMMDD format as numbers (e.g., 20251011 for October 11, 2025)
@@ -98,27 +231,17 @@ export class PackagesService {
              */
             order?: number;
             /**
-             * Departure locations (populated with depth=1)
+             * Departure location IDs
              */
-            departures?: Array<{
-                id?: number;
-                name?: string;
-                type?: 'area' | 'country' | 'continent';
-                mapsUrl?: string | null;
-            }>;
+            departures?: Array<number>;
             /**
              * Default departure information (1:1 with departures)
              */
             defaultDepartInfo?: Array<string>;
             /**
-             * Destination location (populated with depth=1)
+             * Destination location ID
              */
-            destination?: {
-                id?: number;
-                name?: string;
-                type?: 'area' | 'country' | 'continent';
-                mapsUrl?: string | null;
-            };
+            destination?: number;
             /**
              * Default return information
              */
