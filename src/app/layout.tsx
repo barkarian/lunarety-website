@@ -16,6 +16,7 @@ const outfit = Outfit({
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const { website } = await getWebsiteConfig();
+    console.dir({website}, { depth: null });
     
     return {
       title: website.seo?.title || "Lunarety - Find Your Perfect Getaway",

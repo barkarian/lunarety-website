@@ -13,6 +13,7 @@ export type { AvailabilityPropertyContent } from './models/AvailabilityPropertyC
 export type { AvailabilityRoom } from './models/AvailabilityRoom';
 export type { bookingSecretUUID } from './models/bookingSecretUUID';
 export type { ErrorResponse } from './models/ErrorResponse';
+export { FilterLocation } from './models/FilterLocation';
 export type { PerformanceMetrics } from './models/PerformanceMetrics';
 export { RichText } from './models/RichText';
 export type { RoomOccupancy } from './models/RoomOccupancy';

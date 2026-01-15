@@ -2,13 +2,14 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { FilterLocation } from '../models/FilterLocation';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class WebsiteService {
     /**
      * Validate Website API Key
-     * Validates the website API key and returns website configuration (depth=0, excludes sensitive fields)
+     * Validates the website API key and returns website configuration with populated filter locations
      * @param websiteApiKey The unique API key for the website integration
      * @returns any Website found and validated
      * @throws ApiError
@@ -145,13 +146,13 @@ export class WebsiteService {
              */
             filterPackages?: {
                 /**
-                 * Array of unique departure location IDs from packages
+                 * Array of unique departure locations from packages (populated)
                  */
-                departures?: Array<number> | null;
+                departures?: Array<FilterLocation> | null;
                 /**
-                 * Array of unique destination location IDs from packages
+                 * Array of unique destination locations from packages (populated)
                  */
-                destinations?: Array<number> | null;
+                destinations?: Array<FilterLocation> | null;
                 /**
                  * Array of unique duration options (in days) from packages
                  */
@@ -170,9 +171,9 @@ export class WebsiteService {
              */
             filterProperties?: {
                 /**
-                 * Array of unique destination location IDs from properties
+                 * Array of unique destination locations from properties (populated)
                  */
-                destinations?: Array<number> | null;
+                destinations?: Array<FilterLocation> | null;
             };
             /**
              * Last update timestamp
