@@ -603,6 +603,21 @@ function transformPackage(pkg: Record<string, unknown>): Package {
     }
   }
   
+  // Helper to transform linkedToDepartures
+  const transformLinkedDepartures = (rawLinked: unknown): PackageLocation[] | undefined => {
+    if (!rawLinked || !Array.isArray(rawLinked)) return undefined;
+    return rawLinked.map((dep: Record<string, unknown> | number) => {
+      if (typeof dep === 'number') {
+        return { id: dep, name: `Location ${dep}` };
+      }
+      return {
+        id: dep.id as number,
+        name: dep.name as string,
+        type: dep.type as string | undefined,
+      };
+    });
+  };
+
   // Transform default offers
   const rawOffers = (pkg.defaultOffers || []) as Array<Record<string, unknown>>;
   const defaultOffers: PackageOffer[] = rawOffers.map((offer) => ({
@@ -610,6 +625,7 @@ function transformPackage(pkg: Record<string, unknown>): Package {
     children: offer.children as number | undefined,
     group: offer.group as string | undefined,
     total: offer.total as number | undefined,
+    linkedToDepartures: transformLinkedDepartures(offer.linkedToDepartures),
   }));
   
   // Transform date ranges
@@ -617,6 +633,19 @@ function transformPackage(pkg: Record<string, unknown>): Package {
   const dateRanges = rawDateRanges.map((dr) => {
     const trip = dr.trip as Record<string, unknown> | undefined;
     const offers = dr.offers as Record<string, unknown> | undefined;
+    
+    // Transform custom offers with linkedToDepartures
+    let customOffers: PackageOffer[] | undefined;
+    if (offers?.customOffers && Array.isArray(offers.customOffers)) {
+      customOffers = (offers.customOffers as Array<Record<string, unknown>>).map((co) => ({
+        adults: co.adults as number | undefined,
+        children: co.children as number | undefined,
+        group: co.group as string | undefined,
+        total: co.total as number | undefined,
+        linkedToDepartures: transformLinkedDepartures(co.linkedToDepartures),
+      }));
+    }
+
     return {
       from: dr.from as number | undefined,
       to: dr.to as number | undefined,
@@ -628,7 +657,7 @@ function transformPackage(pkg: Record<string, unknown>): Package {
       } : undefined,
       offers: offers ? {
         hasCustomOffers: offers.hasCustomOffers as boolean | undefined,
-        customOffers: (offers.customOffers || []) as PackageOffer[],
+        customOffers,
       } : undefined,
     };
   });
@@ -717,7 +746,12 @@ export async function getPackageById(packageId: string): Promise<Package | null>
 }
 
 // Get properties by IDs for package detail page
-export async function getPropertiesByIds(propertyIds: number[], dateFrom?: number, dateTo?: number) {
+export async function getPropertiesByIds(
+  propertyIds: number[], 
+  dateFrom?: number, 
+  dateTo?: number,
+  rooms?: RoomOccupancy[]
+) {
   try {
     if (!propertyIds || propertyIds.length === 0) {
       return { properties: [] };
@@ -728,7 +762,7 @@ export async function getPropertiesByIds(propertyIds: number[], dateFrom?: numbe
       return await getAvailability({
         from: dateFrom,
         to: dateTo,
-        rooms: [{ adults: 2, children: 0 }], // Default room config for pricing
+        rooms: rooms || [{ adults: 2, children: 0 }], // Use provided rooms or default
         propertyIds,
       });
     }

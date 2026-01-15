@@ -11,6 +11,7 @@ import {
   CheckIcon,
   InfoIcon,
   Loader2Icon,
+  BedIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/dialog";
 import { ImageCarousel } from "@/components/ui/image-carousel";
 import { RichText } from "@/components/RichText";
+import { RoomSelector } from "@/components/search/RoomSelector";
 import {
   getPackageById,
   getPropertiesByIds,
@@ -41,11 +43,14 @@ import {
   type Package,
   type PackageDateRange,
   type PackageOffer,
+  type PackageLocation,
   type Property,
   type RoomPrice,
+  type RoomOccupancy,
   formatCurrency,
   formatDateNumber,
   calculateNights,
+  parseRooms,
 } from "@/lib/types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
 
@@ -54,13 +59,12 @@ interface PackageDetailsProps {
   searchParams: {
     availabilityFrom?: string;
     availabilityTo?: string;
-    adults?: string;
-    children?: string;
+    rooms?: string;
   };
 }
 
-// Booking step enum
-type BookingStep = "select-date" | "select-offer" | "select-property" | "select-room" | "review";
+// Booking step enum - now includes departure selection
+type BookingStep = "select-departure" | "select-date" | "select-offer" | "select-property" | "select-room" | "review";
 
 export function PackageDetails({
   packageId,
@@ -72,8 +76,12 @@ export function PackageDetails({
   const [error, setError] = React.useState<string | null>(null);
   const [showDescriptionModal, setShowDescriptionModal] = React.useState(false);
 
+  // Parse rooms from search params
+  const initialRooms = React.useMemo(() => parseRooms(searchParams.rooms), [searchParams.rooms]);
+
   // Booking flow state
-  const [currentStep, setCurrentStep] = React.useState<BookingStep>("select-date");
+  const [currentStep, setCurrentStep] = React.useState<BookingStep>("select-departure");
+  const [selectedDeparture, setSelectedDeparture] = React.useState<PackageLocation | null>(null);
   const [selectedDateRange, setSelectedDateRange] = React.useState<PackageDateRange | null>(null);
   const [selectedOffer, setSelectedOffer] = React.useState<PackageOffer | null>(null);
   const [properties, setProperties] = React.useState<Property[]>([]);
@@ -84,10 +92,9 @@ export function PackageDetails({
     price: RoomPrice | null;
   } | null>(null);
   const [isLoadingProperties, setIsLoadingProperties] = React.useState(false);
-
-  // Parse search params
-  const adults = searchParams.adults ? parseInt(searchParams.adults, 10) : 2;
-  const children = searchParams.children ? parseInt(searchParams.children, 10) : 0;
+  
+  // Rooms configuration state
+  const [rooms, setRooms] = React.useState<RoomOccupancy[]>(initialRooms);
 
   // Fetch package data
   React.useEffect(() => {
@@ -99,6 +106,11 @@ export function PackageDetails({
         const packageData = await getPackageById(packageId);
         if (packageData) {
           setPkg(packageData);
+          // If package has only one departure, auto-select it
+          if (packageData.departures && packageData.departures.length === 1) {
+            setSelectedDeparture(packageData.departures[0]);
+            setCurrentStep("select-date");
+          }
         } else {
           setError("Package not found");
         }
@@ -112,7 +124,7 @@ export function PackageDetails({
     fetchPackage();
   }, [packageId]);
 
-  // Fetch properties when date range is selected
+  // Fetch properties when date range is selected - now with rooms configuration
   const fetchProperties = React.useCallback(async (dateRange: PackageDateRange) => {
     if (!dateRange.properties || dateRange.properties.length === 0) {
       setProperties([]);
@@ -124,7 +136,8 @@ export function PackageDetails({
       const result = await getPropertiesByIds(
         dateRange.properties,
         dateRange.from,
-        dateRange.to
+        dateRange.to,
+        rooms // Pass rooms configuration
       );
       setProperties(result.properties || []);
     } catch (e) {
@@ -133,9 +146,19 @@ export function PackageDetails({
     } finally {
       setIsLoadingProperties(false);
     }
-  }, []);
+  }, [rooms]);
 
-  // Handle date range selection
+  // Handle departure selection (Step 1)
+  const handleDepartureSelect = (departure: PackageLocation) => {
+    setSelectedDeparture(departure);
+    setSelectedDateRange(null);
+    setSelectedOffer(null);
+    setSelectedProperty(null);
+    setSelectedRoom(null);
+    setCurrentStep("select-date");
+  };
+
+  // Handle date range selection (Step 2)
   const handleDateRangeSelect = (dateRange: PackageDateRange) => {
     setSelectedDateRange(dateRange);
     setSelectedOffer(null);
@@ -144,7 +167,7 @@ export function PackageDetails({
     setCurrentStep("select-offer");
   };
 
-  // Handle offer selection
+  // Handle offer selection (Step 3)
   const handleOfferSelect = (offer: PackageOffer) => {
     setSelectedOffer(offer);
     setCurrentStep("select-property");
@@ -155,14 +178,14 @@ export function PackageDetails({
     }
   };
 
-  // Handle property selection
+  // Handle property selection (Step 4)
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     setSelectedRoom(null);
     setCurrentStep("select-room");
   };
 
-  // Handle room selection
+  // Handle room selection (Step 5)
   const handleRoomSelect = (roomId: string, channelRoomId: string, price: RoomPrice | null) => {
     setSelectedRoom({ roomId, channelRoomId, price });
     setCurrentStep("review");
@@ -173,32 +196,49 @@ export function PackageDetails({
   const accommodationPrice = selectedRoom?.price?.price || 0;
   const totalPrice = tripOfferPrice + accommodationPrice;
 
+  // Calculate totals for display
+  const totalGuests = rooms.reduce((acc, room) => acc + room.adults + room.children, 0);
+  const nights = selectedDateRange?.from && selectedDateRange?.to 
+    ? calculateNights(selectedDateRange.from, selectedDateRange.to) 
+    : 0;
+
   // Handle booking
   const handleBookNow = () => {
     console.log("=== BOOKING DETAILS ===");
     console.log("Package:", pkg?.packageName);
+    console.log("Selected Departure:", selectedDeparture);
     console.log("Selected Date Range:", selectedDateRange);
     console.log("Selected Offer:", selectedOffer);
     console.log("Selected Property:", selectedProperty?.name);
     console.log("Selected Room:", selectedRoom);
+    console.log("Rooms Configuration:", rooms);
     console.log("Trip Offer Price:", tripOfferPrice);
     console.log("Accommodation Price:", accommodationPrice);
     console.log("Total Price:", totalPrice);
-    console.log("Travelers:", { adults, children });
     console.log("======================");
   };
 
-  // Get available offers for selected date range
+  // Get available offers for selected date range, filtered by departure
   const getAvailableOffers = (): PackageOffer[] => {
-    if (!selectedDateRange || !pkg) return [];
+    if (!selectedDateRange || !pkg || !selectedDeparture) return [];
     
-    // Check if date range has custom offers
+    // Get offers from custom offers or default offers
+    let offers: PackageOffer[];
     if (selectedDateRange.offers?.hasCustomOffers && selectedDateRange.offers.customOffers) {
-      return selectedDateRange.offers.customOffers;
+      offers = selectedDateRange.offers.customOffers;
+    } else {
+      offers = pkg.defaultOffers || [];
     }
     
-    // Fall back to default offers
-    return pkg.defaultOffers || [];
+    // Filter offers: show only offers with no linkedToDepartures OR linked to selected departure
+    return offers.filter(offer => {
+      // If no linkedToDepartures, show the offer (available for all departures)
+      if (!offer.linkedToDepartures || offer.linkedToDepartures.length === 0) {
+        return true;
+      }
+      // If linkedToDepartures exists, check if selected departure is in the list
+      return offer.linkedToDepartures.some(dep => dep.id === selectedDeparture.id);
+    });
   };
 
   if (isLoading) {
@@ -239,6 +279,8 @@ export function PackageDetails({
 
   const TransportIcon = pkg.meta?.transportation === 'plane' ? PlaneIcon : ShipIcon;
   const availableOffers = getAvailableOffers();
+  const hasDepartures = pkg.departures && pkg.departures.length > 0;
+  const hasMultipleDepartures = pkg.departures && pkg.departures.length > 1;
 
   return (
     <div className="space-y-8 animate-fade-in-up">
@@ -278,10 +320,10 @@ export function PackageDetails({
                       <span className="capitalize">{pkg.meta.transportation}</span>
                     </Badge>
                   )}
-                  {pkg.content?.durationInDaysOptions && (
+                  {pkg.content?.durationInDaysOptions && Array.isArray(pkg.content.durationInDaysOptions) && (
                     <Badge variant="secondary" className="flex items-center gap-1">
                       <CalendarIcon className="h-3 w-3" />
-                      {pkg.content.durationInDaysOptions} days
+                      {pkg.content.durationInDaysOptions.join(" / ")} days
                     </Badge>
                   )}
                   {pkg.meta?.tags?.map((tag) => (
@@ -315,62 +357,35 @@ export function PackageDetails({
             )}
           </div>
 
-          {/* Departures */}
-          {pkg.departures && pkg.departures.length > 0 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Departure Points</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {pkg.departures.map((dep, idx) => (
-                  <div 
-                    key={dep.id} 
-                    className="flex items-start gap-3 p-3 rounded-lg bg-accent/30"
-                  >
-                    <MapPinIcon className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium">{dep.name}</p>
-                      {pkg.defaultDepartInfo?.[idx] && (
-                        <p className="text-sm text-muted-foreground">
-                          {pkg.defaultDepartInfo[idx]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           <Separator />
 
           {/* Booking Flow */}
           <div className="space-y-6">
-            {/* Step 1: Select Date Range */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  currentStep === "select-date" 
-                    ? "bg-primary text-primary-foreground" 
-                    : selectedDateRange 
-                      ? "bg-green-500 text-white" 
-                      : "bg-muted text-muted-foreground"
-                }`}>
-                  {selectedDateRange ? <CheckIcon className="h-4 w-4" /> : "1"}
+            {/* Step 1: Select Departure Point */}
+            {hasDepartures && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep === "select-departure" 
+                      ? "bg-primary text-primary-foreground" 
+                      : selectedDeparture 
+                        ? "bg-green-500 text-white" 
+                        : "bg-muted text-muted-foreground"
+                  }`}>
+                    {selectedDeparture ? <CheckIcon className="h-4 w-4" /> : "1"}
+                  </div>
+                  <h2 className="text-xl font-semibold">Select Departure Point</h2>
                 </div>
-                <h2 className="text-xl font-semibold">Select Travel Dates</h2>
-              </div>
 
-              {pkg.dateRanges && pkg.dateRanges.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {pkg.dateRanges.map((dateRange, idx) => {
-                    const isSelected = selectedDateRange === dateRange;
-                    const nights = dateRange.from && dateRange.to 
-                      ? calculateNights(dateRange.from, dateRange.to) 
-                      : 0;
+                  {pkg.departures!.map((departure, idx) => {
+                    const isSelected = selectedDeparture?.id === departure.id;
+                    const departInfo = pkg.defaultDepartInfo?.[idx];
 
                     return (
                       <button
-                        key={idx}
-                        onClick={() => handleDateRangeSelect(dateRange)}
+                        key={departure.id}
+                        onClick={() => handleDepartureSelect(departure)}
                         className={`
                           p-4 rounded-xl border-2 transition-all text-left
                           ${isSelected 
@@ -380,36 +395,97 @@ export function PackageDetails({
                         `}
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <CalendarIcon className="h-4 w-4 text-primary" />
-                          <span className="font-semibold">
-                            {dateRange.from && formatDateNumber(dateRange.from)}
-                          </span>
+                          <MapPinIcon className="h-4 w-4 text-primary" />
+                          <span className="font-semibold">{departure.name}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>to</span>
-                          <span className="font-medium">
-                            {dateRange.to && formatDateNumber(dateRange.to)}
-                          </span>
-                        </div>
-                        {nights > 0 && (
-                          <Badge variant="secondary" className="mt-2">
-                            {nights} nights
-                          </Badge>
+                        {departInfo && (
+                          <p className="text-sm text-muted-foreground">
+                            {departInfo}
+                          </p>
+                        )}
+                        {isSelected && (
+                          <div className="mt-2">
+                            <Badge className="bg-primary text-primary-foreground">
+                              Selected
+                            </Badge>
+                          </div>
                         )}
                       </button>
                     );
                   })}
                 </div>
-              ) : (
-                <p className="text-muted-foreground">
-                  No available dates for this package.
-                </p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Step 2: Select Offer */}
-            {(currentStep !== "select-date" || selectedDateRange) && (
-              <div className={currentStep === "select-date" ? "opacity-50 pointer-events-none" : ""}>
+            {/* Step 2: Select Date Range */}
+            {(currentStep !== "select-departure" || selectedDeparture) && (
+              <div className={currentStep === "select-departure" && !selectedDeparture ? "opacity-50 pointer-events-none" : ""}>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                    currentStep === "select-date" 
+                      ? "bg-primary text-primary-foreground" 
+                      : selectedDateRange 
+                        ? "bg-green-500 text-white" 
+                        : "bg-muted text-muted-foreground"
+                  }`}>
+                    {selectedDateRange ? <CheckIcon className="h-4 w-4" /> : hasMultipleDepartures ? "2" : "1"}
+                  </div>
+                  <h2 className="text-xl font-semibold">Select Travel Dates</h2>
+                </div>
+
+                {pkg.dateRanges && pkg.dateRanges.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pkg.dateRanges.map((dateRange, idx) => {
+                      const isSelected = selectedDateRange === dateRange;
+                      const rangeNights = dateRange.from && dateRange.to 
+                        ? calculateNights(dateRange.from, dateRange.to) 
+                        : 0;
+
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleDateRangeSelect(dateRange)}
+                          disabled={currentStep === "select-departure" && !selectedDeparture}
+                          className={`
+                            p-4 rounded-xl border-2 transition-all text-left
+                            ${isSelected 
+                              ? "border-primary bg-primary/5" 
+                              : "border-border hover:border-primary/50 hover:bg-accent/50"
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <CalendarIcon className="h-4 w-4 text-primary" />
+                            <span className="font-semibold">
+                              {dateRange.from && formatDateNumber(dateRange.from)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>to</span>
+                            <span className="font-medium">
+                              {dateRange.to && formatDateNumber(dateRange.to)}
+                            </span>
+                          </div>
+                          {rangeNights > 0 && (
+                            <Badge variant="secondary" className="mt-2">
+                              {rangeNights} nights
+                            </Badge>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">
+                    No available dates for this package.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Select Offer */}
+            {(currentStep === "select-offer" || currentStep === "select-property" || currentStep === "select-room" || currentStep === "review") && (
+              <div>
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                     currentStep === "select-offer" 
@@ -418,7 +494,7 @@ export function PackageDetails({
                         ? "bg-green-500 text-white" 
                         : "bg-muted text-muted-foreground"
                   }`}>
-                    {selectedOffer ? <CheckIcon className="h-4 w-4" /> : "2"}
+                    {selectedOffer ? <CheckIcon className="h-4 w-4" /> : hasMultipleDepartures ? "3" : "2"}
                   </div>
                   <h2 className="text-xl font-semibold">Select Trip Option</h2>
                 </div>
@@ -427,13 +503,12 @@ export function PackageDetails({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {availableOffers.map((offer, idx) => {
                       const isSelected = selectedOffer === offer;
-                      const totalGuests = (offer.adults || 0) + (offer.children || 0);
+                      const offerTotalGuests = (offer.adults || 0) + (offer.children || 0);
 
                       return (
                         <button
                           key={idx}
                           onClick={() => handleOfferSelect(offer)}
-                          disabled={currentStep === "select-date"}
                           className={`
                             p-4 rounded-xl border-2 transition-all text-left
                             ${isSelected 
@@ -445,7 +520,7 @@ export function PackageDetails({
                           <div className="flex items-center gap-2 mb-2">
                             <UsersIcon className="h-4 w-4 text-primary" />
                             <span className="font-semibold">
-                              {offer.group || `${totalGuests} Travelers`}
+                              {offer.group || `${offerTotalGuests} Travelers`}
                             </span>
                           </div>
                           <div className="text-sm text-muted-foreground mb-2">
@@ -463,13 +538,13 @@ export function PackageDetails({
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
-                    No trip options available. Please select a date range first.
+                    No trip options available for this departure. Please select a different departure point.
                   </p>
                 )}
               </div>
             )}
 
-            {/* Step 3: Select Property */}
+            {/* Step 4: Select Property */}
             {(currentStep === "select-property" || currentStep === "select-room" || currentStep === "review") && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -480,7 +555,7 @@ export function PackageDetails({
                         ? "bg-green-500 text-white" 
                         : "bg-muted text-muted-foreground"
                   }`}>
-                    {selectedProperty ? <CheckIcon className="h-4 w-4" /> : "3"}
+                    {selectedProperty ? <CheckIcon className="h-4 w-4" /> : hasMultipleDepartures ? "4" : "3"}
                   </div>
                   <h2 className="text-xl font-semibold">Select Accommodation</h2>
                 </div>
@@ -552,7 +627,7 @@ export function PackageDetails({
               </div>
             )}
 
-            {/* Step 4: Select Room */}
+            {/* Step 5: Select Room */}
             {(currentStep === "select-room" || currentStep === "review") && selectedProperty && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -563,7 +638,7 @@ export function PackageDetails({
                         ? "bg-green-500 text-white" 
                         : "bg-muted text-muted-foreground"
                   }`}>
-                    {selectedRoom ? <CheckIcon className="h-4 w-4" /> : "4"}
+                    {selectedRoom ? <CheckIcon className="h-4 w-4" /> : hasMultipleDepartures ? "5" : "4"}
                   </div>
                   <h2 className="text-xl font-semibold">Select Room at {selectedProperty.name}</h2>
                 </div>
@@ -642,6 +717,32 @@ export function PackageDetails({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Guests & Rooms Selector */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                  Guests & Rooms
+                </label>
+                <RoomSelector
+                  rooms={rooms}
+                  onRoomsChange={setRooms}
+                />
+              </div>
+
+              <Separator />
+
+              {/* Selected Departure */}
+              {selectedDeparture && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-accent/30">
+                  <MapPinIcon className="h-4 w-4 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Departure</p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedDeparture.name}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Selected Date Range */}
               {selectedDateRange && (
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-accent/30">
@@ -651,6 +752,11 @@ export function PackageDetails({
                     <p className="text-sm text-muted-foreground">
                       {selectedDateRange.from && formatDateNumber(selectedDateRange.from)} — {selectedDateRange.to && formatDateNumber(selectedDateRange.to)}
                     </p>
+                    {nights > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {nights} night{nights !== 1 ? "s" : ""}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -676,7 +782,7 @@ export function PackageDetails({
               {/* Selected Property & Room */}
               {selectedProperty && (
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-accent/30">
-                  <MapPinIcon className="h-4 w-4 text-primary mt-0.5" />
+                  <BedIcon className="h-4 w-4 text-primary mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium">{selectedProperty.name}</p>
                     {selectedRoom && (
@@ -694,6 +800,16 @@ export function PackageDetails({
                   </div>
                 </div>
               )}
+
+              {/* Rooms Summary */}
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                <UsersIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">
+                    {totalGuests} guest{totalGuests !== 1 ? "s" : ""} · {rooms.length} room{rooms.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
 
               {/* Price Breakdown */}
               {(tripOfferPrice > 0 || accommodationPrice > 0) && (
@@ -735,6 +851,7 @@ export function PackageDetails({
               ) : (
                 <div className="w-full text-center">
                   <p className="text-sm text-muted-foreground">
+                    {currentStep === "select-departure" && "Select a departure point to continue"}
                     {currentStep === "select-date" && "Select travel dates to continue"}
                     {currentStep === "select-offer" && "Select a trip option to continue"}
                     {currentStep === "select-property" && "Select accommodation to continue"}

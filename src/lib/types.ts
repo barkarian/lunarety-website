@@ -129,6 +129,7 @@ export interface PackageOffer {
   children?: number;
   group?: string;
   total?: number;
+  linkedToDepartures?: PackageLocation[];
 }
 
 export interface PackageDateRange {

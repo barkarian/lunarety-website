@@ -8,8 +8,7 @@ interface PageProps {
   searchParams: Promise<{
     availabilityFrom?: string;
     availabilityTo?: string;
-    adults?: string;
-    children?: string;
+    rooms?: string;
   }>;
 }
 

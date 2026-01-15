@@ -3,6 +3,8 @@ import { PackageGrid } from "@/components/search/PackageGrid";
 import {
   numberToDate,
   dateToNumber,
+  parseRooms,
+  serializeRooms,
 } from "@/lib/types";
 import type { Package } from "@/lib/types";
 
@@ -10,8 +12,7 @@ interface PackageResultsProps {
   searchParams: {
     availabilityFrom?: string;
     availabilityTo?: string;
-    adults?: string;
-    children?: string;
+    rooms?: string;
   };
 }
 
@@ -32,15 +33,15 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
     ? parseInt(searchParams.availabilityTo, 10)
     : defaultTo;
   
-  const adults = searchParams.adults ? parseInt(searchParams.adults, 10) : 2;
-  const children = searchParams.children ? parseInt(searchParams.children, 10) : 0;
+  // Parse rooms configuration
+  const rooms = parseRooms(searchParams.rooms);
+  const totalGuests = rooms.reduce((acc, room) => acc + room.adults + room.children, 0);
 
   // Build search params string for package links
   const urlParams = new URLSearchParams();
   urlParams.set("availabilityFrom", String(availabilityFrom));
   urlParams.set("availabilityTo", String(availabilityTo));
-  urlParams.set("adults", String(adults));
-  urlParams.set("children", String(children));
+  urlParams.set("rooms", serializeRooms(rooms));
   const searchParamsString = urlParams.toString();
 
   let packages: Package[] = [];
@@ -57,8 +58,6 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
     console.error("Error fetching packages:", e);
   }
 
-  const totalGuests = adults + children;
-
   // Convert to dates for display formatting
   const fromDate = numberToDate(availabilityFrom);
   const toDate = numberToDate(availabilityTo);
@@ -71,7 +70,7 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
           <h2 className="text-2xl font-bold">Available Packages</h2>
           <p className="text-muted-foreground mt-1">
             {packages.length} package{packages.length !== 1 ? "s" : ""}{" "}
-            for {totalGuests} traveler{totalGuests !== 1 ? "s" : ""}
+            for {totalGuests} traveler{totalGuests !== 1 ? "s" : ""} · {rooms.length} room{rooms.length !== 1 ? "s" : ""}
           </p>
         </div>
 

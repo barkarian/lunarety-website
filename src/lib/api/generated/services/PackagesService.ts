@@ -103,6 +103,13 @@ export class PackagesService {
                  * Property IDs (not populated)
                  */
                 properties?: Array<number>;
+                /**
+                 * Optional - Populated location objects this date range is linked to
+                 */
+                linkedToDepartures?: Array<{
+                    id?: number;
+                    name?: string;
+                }>;
                 trip?: {
                     hasCustomInfos?: boolean;
                     customDepartInfo?: Array<string>;
@@ -330,6 +337,13 @@ export class PackagesService {
                  * Property IDs (not populated)
                  */
                 properties?: Array<number>;
+                /**
+                 * Optional - Populated location objects this date range is linked to
+                 */
+                linkedToDepartures?: Array<{
+                    id?: number;
+                    name?: string;
+                }>;
                 trip?: {
                     hasCustomInfos?: boolean;
                     customDepartInfo?: Array<string>;

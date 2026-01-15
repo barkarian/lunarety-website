@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SearchIcon, CalendarIcon, UsersIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { SearchIcon, CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -13,11 +13,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { RoomSelector } from "./RoomSelector";
 import {
   type DateRangeNumber,
+  type RoomOccupancy,
   numberToDate,
   dateToNumber,
   formatDateNumber,
+  parseRooms,
+  serializeRooms,
 } from "@/lib/types";
 
 interface PackageSearchBarProps {
@@ -54,18 +58,12 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
     }
   );
 
-  const [adults, setAdults] = React.useState(() => {
-    const adultsParam = searchParams.get("adults");
-    return adultsParam ? parseInt(adultsParam, 10) : 2;
-  });
-
-  const [children, setChildren] = React.useState(() => {
-    const childrenParam = searchParams.get("children");
-    return childrenParam ? parseInt(childrenParam, 10) : 0;
+  const [rooms, setRooms] = React.useState<RoomOccupancy[]>(() => {
+    const roomsParam = searchParams.get("rooms");
+    return parseRooms(roomsParam || undefined);
   });
 
   const [datePickerOpen, setDatePickerOpen] = React.useState(false);
-  const [guestsOpen, setGuestsOpen] = React.useState(false);
 
   const handleSearch = () => {
     const params = new URLSearchParams();
@@ -75,8 +73,7 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
     if (availabilityRange?.to) {
       params.set("availabilityTo", String(availabilityRange.to));
     }
-    params.set("adults", String(adults));
-    params.set("children", String(children));
+    params.set("rooms", serializeRooms(rooms));
 
     router.push(`/packages?${params.toString()}`);
     onSearch?.();
@@ -122,8 +119,6 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
       setDatePickerOpen(false);
     }
   };
-
-  const totalGuests = adults + children;
 
   return (
     <div
@@ -179,101 +174,13 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
 
         <div className="w-px bg-border hidden lg:block" />
 
-        {/* Guests Selector */}
+        {/* Guests & Rooms Selector */}
         <div className="flex-1 lg:max-w-xs">
-          <Popover open={guestsOpen} onOpenChange={setGuestsOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal h-14 px-4 bg-transparent border-0 shadow-none hover:bg-accent/50"
-              >
-                <UsersIcon className="mr-3 h-5 w-5 opacity-60" />
-                <div className="flex flex-col items-start gap-0.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Travelers
-                  </span>
-                  <span className="text-sm">
-                    {totalGuests} guest{totalGuests !== 1 ? "s" : ""}
-                    {adults > 0 && (
-                      <span className="text-muted-foreground">
-                        {" "}({adults} adult{adults !== 1 ? "s" : ""}
-                        {children > 0 && `, ${children} child${children !== 1 ? "ren" : ""}`})
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-4" align="start">
-              <div className="space-y-4">
-                {/* Adults */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Adults</p>
-                    <p className="text-xs text-muted-foreground">Age 18+</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setAdults(Math.max(1, adults - 1))}
-                      disabled={adults <= 1}
-                      className="h-8 w-8"
-                    >
-                      <MinusIcon className="h-3.5 w-3.5" />
-                    </Button>
-                    <span className="w-6 text-center text-sm font-medium">
-                      {adults}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setAdults(Math.min(10, adults + 1))}
-                      disabled={adults >= 10}
-                      className="h-8 w-8"
-                    >
-                      <PlusIcon className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Children */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Children</p>
-                    <p className="text-xs text-muted-foreground">Age 0-17</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setChildren(Math.max(0, children - 1))}
-                      disabled={children <= 0}
-                      className="h-8 w-8"
-                    >
-                      <MinusIcon className="h-3.5 w-3.5" />
-                    </Button>
-                    <span className="w-6 text-center text-sm font-medium">
-                      {children}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setChildren(Math.min(8, children + 1))}
-                      disabled={children >= 8}
-                      className="h-8 w-8"
-                    >
-                      <PlusIcon className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                <Button onClick={() => setGuestsOpen(false)} className="w-full">
-                  Done
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <RoomSelector
+            rooms={rooms}
+            onRoomsChange={setRooms}
+            className="bg-transparent border-0 shadow-none hover:bg-accent/50"
+          />
         </div>
 
         <Button
