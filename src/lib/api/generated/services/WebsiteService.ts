@@ -141,6 +141,40 @@ export class WebsiteService {
                 };
             };
             /**
+             * Auto-populated filter options from packages (only for platformMarketplace)
+             */
+            filterPackages?: {
+                /**
+                 * Array of unique departure location IDs from packages
+                 */
+                departures?: Array<number> | null;
+                /**
+                 * Array of unique destination location IDs from packages
+                 */
+                destinations?: Array<number> | null;
+                /**
+                 * Array of unique duration options (in days) from packages
+                 */
+                numberOfDays?: Array<number> | null;
+                /**
+                 * Array of unique transportation types from packages
+                 */
+                transportation?: Array<'bus' | 'plane'> | null;
+                /**
+                 * Array of unique tags from packages
+                 */
+                tags?: Array<string> | null;
+            };
+            /**
+             * Auto-populated filter options from properties
+             */
+            filterProperties?: {
+                /**
+                 * Array of unique destination location IDs from properties
+                 */
+                destinations?: Array<number> | null;
+            };
+            /**
              * Last update timestamp
              */
             updatedAt: string;
