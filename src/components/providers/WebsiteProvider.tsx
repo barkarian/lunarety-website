@@ -92,6 +92,8 @@ export function useWebsite() {
     logo: store.getLogo(),
     favicon: store.getFavicon(),
     seo: store.getSeo(),
+    filterPackages: store.getFilterPackages(),
+    filterProperties: store.getFilterProperties(),
   };
 }
 

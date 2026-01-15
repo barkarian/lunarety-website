@@ -5,13 +5,13 @@ import {
   getDefaultDates,
   serializeRooms,
   calculateNights,
-  formatDateNumber,
   numberToDate,
 } from "@/lib/types";
 import type { Property } from "@/lib/types";
 
 interface PropertyResultsProps {
   searchParams: {
+    destination?: string;
     from?: string;
     to?: string;
     rooms?: string;
@@ -21,6 +21,11 @@ interface PropertyResultsProps {
 export async function PropertyResults({ searchParams }: PropertyResultsProps) {
   const defaults = getDefaultDates();
   
+  // Parse destination filter (currently for UI only - backend filtering not yet supported)
+  const destinationId = searchParams.destination
+    ? parseInt(searchParams.destination, 10)
+    : undefined;
+
   // Parse dates as YYYYMMDD numbers
   const from = searchParams.from
     ? parseInt(searchParams.from, 10)
@@ -34,6 +39,9 @@ export async function PropertyResults({ searchParams }: PropertyResultsProps) {
 
   // Build search params string for property links
   const urlParams = new URLSearchParams();
+  if (destinationId) {
+    urlParams.set("destination", String(destinationId));
+  }
   urlParams.set("from", String(from));
   urlParams.set("to", String(to));
   urlParams.set("rooms", serializeRooms(rooms));

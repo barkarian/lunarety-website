@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SearchIcon, CalendarIcon } from "lucide-react";
+import { SearchIcon, CalendarIcon, MapPinIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -13,7 +13,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { RoomSelector } from "./RoomSelector";
+import { useWebsite } from "@/components/providers/WebsiteProvider";
 import {
   type DateRangeNumber,
   type RoomOccupancy,
@@ -32,6 +40,24 @@ interface PackageSearchBarProps {
 export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { filterPackages, isLoading: websiteLoading } = useWebsite();
+
+  // Get available departure locations from website filters
+  const departures = filterPackages?.departures || [];
+
+  // Initialize departure from URL or default to first available
+  const [departureId, setDepartureId] = React.useState<string | undefined>(() => {
+    const departureParam = searchParams.get("departure");
+    if (departureParam) return departureParam;
+    return undefined; // Will be set in useEffect when departures load
+  });
+
+  // Set default departure when departures are loaded
+  React.useEffect(() => {
+    if (!departureId && departures.length > 0) {
+      setDepartureId(String(departures[0].id));
+    }
+  }, [departures, departureId]);
 
   // Initialize state from URL params or defaults
   const [availabilityRange, setAvailabilityRange] = React.useState<DateRangeNumber | undefined>(
@@ -66,7 +92,10 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
   const [datePickerOpen, setDatePickerOpen] = React.useState(false);
 
   const handleSearch = () => {
+    if (!departureId) return; // Departure is required
+
     const params = new URLSearchParams();
+    params.set("departure", departureId);
     if (availabilityRange?.from) {
       params.set("availabilityFrom", String(availabilityRange.from));
     }
@@ -120,11 +149,49 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
     }
   };
 
+  // Get the selected departure name for display
+  const selectedDeparture = departures.find(d => String(d.id) === departureId);
+
   return (
     <div
       className={`w-full glass rounded-2xl shadow-lg border border-border/50 p-3 ${className}`}
     >
       <div className="flex flex-col lg:flex-row gap-3">
+        {/* Departure Point Selector - Required */}
+        <div className="flex-1 lg:max-w-xs">
+          <Select 
+            value={departureId} 
+            onValueChange={setDepartureId}
+            disabled={websiteLoading || departures.length === 0}
+          >
+            <SelectTrigger 
+              className={cn(
+                "w-full justify-start text-left font-normal h-14 px-4 bg-transparent border-0 shadow-none hover:bg-accent/50",
+                !departureId && "text-muted-foreground"
+              )}
+            >
+              <MapPinIcon className="mr-3 h-5 w-5 opacity-60 shrink-0" />
+              <div className="flex flex-col items-start gap-0.5 overflow-hidden">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Departing from
+                </span>
+                <SelectValue placeholder="Select departure point">
+                  {selectedDeparture?.name || "Select departure point"}
+                </SelectValue>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {departures.map((departure) => (
+                <SelectItem key={departure.id} value={String(departure.id)}>
+                  {departure.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="w-px bg-border hidden lg:block" />
+
         {/* Availability Date Range */}
         <div className="flex-1">
           <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
@@ -185,6 +252,7 @@ export function PackageSearchBar({ onSearch, className }: PackageSearchBarProps)
 
         <Button
           onClick={handleSearch}
+          disabled={!departureId || departures.length === 0}
           size="lg"
           className="h-14 px-8 rounded-xl text-base font-semibold"
         >

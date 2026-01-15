@@ -1,4 +1,11 @@
-export { useWebsiteStore, isCacheValid, type WebsiteConfig } from "./website-store";
+export { 
+  useWebsiteStore, 
+  isCacheValid, 
+  type WebsiteConfig,
+  type FilterLocation,
+  type WebsiteFilterPackages,
+  type WebsiteFilterProperties,
+} from "./website-store";
 export { 
   useAuthStore, 
   isUserTypeAllowed, 

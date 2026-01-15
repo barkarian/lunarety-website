@@ -6,6 +6,7 @@ import { ProtectedContent } from "@/components/auth/ProtectedContent";
 
 interface PageProps {
   searchParams: Promise<{
+    departure?: string;
     availabilityFrom?: string;
     availabilityTo?: string;
     rooms?: string;

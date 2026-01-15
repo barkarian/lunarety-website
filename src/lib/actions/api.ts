@@ -554,6 +554,10 @@ export interface GetPackagesParams {
   limit?: number;
   availabilityFrom?: number; // YYYYMMDD
   availabilityTo?: number; // YYYYMMDD
+  departureIds?: number[];
+  destinationIds?: number[];
+  transportation?: 'ship' | 'plane';
+  tags?: string[];
 }
 
 export interface GetPackagesResult {
@@ -709,6 +713,10 @@ export async function getWebsitePackages(params: GetPackagesParams = {}): Promis
       filters: {
         availabilityFrom: params.availabilityFrom,
         availabilityTo: params.availabilityTo,
+        departureIds: params.departureIds,
+        destinationIds: params.destinationIds,
+        transportation: params.transportation,
+        tags: params.tags,
       },
     });
 

@@ -5,6 +5,33 @@ import { persist } from "zustand/middleware";
 
 import type { UserBaseType } from "./auth-store";
 
+// Filter location type - populated location object
+export interface FilterLocation {
+  id: number;
+  name: string;
+  type?: "area" | "country" | "continent";
+  parentArea?: number | FilterLocation | null;
+  parentCountry?: number | FilterLocation | null;
+  parentContinent?: number | FilterLocation | null;
+  mapsUrl?: string | null;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+// Filter types for packages (only for platformMarketplace)
+export interface WebsiteFilterPackages {
+  departures?: FilterLocation[] | null;
+  destinations?: FilterLocation[] | null;
+  numberOfDays?: number[] | null;
+  transportation?: ("bus" | "plane")[] | null;
+  tags?: string[] | null;
+}
+
+// Filter types for properties (all website types)
+export interface WebsiteFilterProperties {
+  destinations?: FilterLocation[] | null;
+}
+
 // Website configuration type based on WebsiteService response
 export interface WebsiteConfig {
   id: number;
@@ -57,6 +84,10 @@ export interface WebsiteConfig {
       filterChannelPropertyIds?: Array<string> | null;
     };
   };
+  // Auto-populated filter options from packages (only for platformMarketplace)
+  filterPackages?: WebsiteFilterPackages | null;
+  // Auto-populated filter options from properties
+  filterProperties?: WebsiteFilterProperties | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -80,6 +111,8 @@ interface WebsiteStore {
   getSeo: () => WebsiteConfig["seo"] | null;
   getUserBaseType: () => UserBaseType | null;
   getWebsiteName: () => string;
+  getFilterPackages: () => WebsiteFilterPackages | null;
+  getFilterProperties: () => WebsiteFilterProperties | null;
 }
 
 // Cache duration: 1 hour
@@ -137,6 +170,16 @@ export const useWebsiteStore = create<WebsiteStore>()(
       getWebsiteName: () => {
         const website = get().website;
         return website?.website?.websiteName || website?.seo?.title || "the team";
+      },
+
+      getFilterPackages: () => {
+        const website = get().website;
+        return website?.filterPackages || null;
+      },
+
+      getFilterProperties: () => {
+        const website = get().website;
+        return website?.filterProperties || null;
       },
     }),
     {

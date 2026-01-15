@@ -10,6 +10,7 @@ import type { Package } from "@/lib/types";
 
 interface PackageResultsProps {
   searchParams: {
+    departure?: string;
     availabilityFrom?: string;
     availabilityTo?: string;
     rooms?: string;
@@ -25,6 +26,11 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
   const defaultFrom = dateToNumber(today);
   const defaultTo = dateToNumber(threeMonthsLater);
 
+  // Parse departure filter
+  const departureId = searchParams.departure
+    ? parseInt(searchParams.departure, 10)
+    : undefined;
+
   // Parse dates as YYYYMMDD numbers
   const availabilityFrom = searchParams.availabilityFrom
     ? parseInt(searchParams.availabilityFrom, 10)
@@ -39,6 +45,9 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
 
   // Build search params string for package links
   const urlParams = new URLSearchParams();
+  if (departureId) {
+    urlParams.set("departure", String(departureId));
+  }
   urlParams.set("availabilityFrom", String(availabilityFrom));
   urlParams.set("availabilityTo", String(availabilityTo));
   urlParams.set("rooms", serializeRooms(rooms));
@@ -51,6 +60,7 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
     const result = await getWebsitePackages({
       availabilityFrom,
       availabilityTo,
+      departureIds: departureId ? [departureId] : undefined,
     });
     packages = result.packages || [];
   } catch (e) {
