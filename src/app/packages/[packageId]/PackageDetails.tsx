@@ -12,6 +12,7 @@ import {
   InfoIcon,
   Loader2Icon,
   BedIcon,
+  AlertCircleIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,12 @@ import {
 import { ImageCarousel } from "@/components/ui/image-carousel";
 import { RichText } from "@/components/RichText";
 import { RoomSelector } from "@/components/search/RoomSelector";
+import {
+  BookingContactForm,
+  validateBookingContactData,
+  type BookingContactData,
+  type AuthenticatedBookingData,
+} from "@/components/booking/BookingContactForm";
 import {
   getPackageById,
   getPropertiesByIds,
@@ -90,11 +97,25 @@ export function PackageDetails({
     roomId: string;
     channelRoomId: string;
     price: RoomPrice | null;
+    isRequestOnly: boolean;
   } | null>(null);
   const [isLoadingProperties, setIsLoadingProperties] = React.useState(false);
   
   // Rooms configuration state
   const [rooms, setRooms] = React.useState<RoomOccupancy[]>(initialRooms);
+
+  // Booking form state
+  const [showBookingForm, setShowBookingForm] = React.useState(false);
+  const [contactData, setContactData] = React.useState<BookingContactData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    countryCode: "",
+  });
+  const [authenticatedData, setAuthenticatedData] = React.useState<AuthenticatedBookingData | null>(null);
+  const [bookingError, setBookingError] = React.useState<string | null>(null);
+  const [isBooking, setIsBooking] = React.useState(false);
 
   // Fetch package data
   React.useEffect(() => {
@@ -155,6 +176,7 @@ export function PackageDetails({
     setSelectedOffer(null);
     setSelectedProperty(null);
     setSelectedRoom(null);
+    setShowBookingForm(false);
     setCurrentStep("select-date");
   };
 
@@ -164,12 +186,14 @@ export function PackageDetails({
     setSelectedOffer(null);
     setSelectedProperty(null);
     setSelectedRoom(null);
+    setShowBookingForm(false);
     setCurrentStep("select-offer");
   };
 
   // Handle offer selection (Step 3)
   const handleOfferSelect = (offer: PackageOffer) => {
     setSelectedOffer(offer);
+    setShowBookingForm(false);
     setCurrentStep("select-property");
     
     // Fetch properties for this date range
@@ -182,14 +206,19 @@ export function PackageDetails({
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property);
     setSelectedRoom(null);
+    setShowBookingForm(false);
     setCurrentStep("select-room");
   };
 
   // Handle room selection (Step 5)
   const handleRoomSelect = (roomId: string, channelRoomId: string, price: RoomPrice | null) => {
-    setSelectedRoom({ roomId, channelRoomId, price });
+    const isRequestOnly = !price || price.price === 0;
+    setSelectedRoom({ roomId, channelRoomId, price, isRequestOnly });
     setCurrentStep("review");
   };
+
+  // Check if the booking has request-only components
+  const hasRequestOnly = selectedRoom?.isRequestOnly || false;
 
   // Calculate total price
   const tripOfferPrice = selectedOffer?.total || 0;
@@ -202,8 +231,37 @@ export function PackageDetails({
     ? calculateNights(selectedDateRange.from, selectedDateRange.to) 
     : 0;
 
+  // Check if booking form is valid
+  const isBookingFormValid = React.useMemo(() => {
+    if (authenticatedData && authenticatedData.userType === "guest") {
+      return true;
+    }
+    return (
+      contactData.firstName &&
+      contactData.lastName &&
+      contactData.email &&
+      contactData.phone &&
+      contactData.countryCode
+    );
+  }, [authenticatedData, contactData]);
+
   // Handle booking
   const handleBookNow = () => {
+    setBookingError(null);
+
+    // Validate contact data if needed
+    const needsGuestContactInfo = !authenticatedData || authenticatedData.userType === "agent";
+    if (needsGuestContactInfo) {
+      const validationError = validateBookingContactData(contactData);
+      if (validationError) {
+        setBookingError(validationError);
+        return;
+      }
+    }
+
+    setIsBooking(true);
+
+    // For now, just console.log the booking details
     console.log("=== BOOKING DETAILS ===");
     console.log("Package:", pkg?.packageName);
     console.log("Selected Departure:", selectedDeparture);
@@ -212,10 +270,32 @@ export function PackageDetails({
     console.log("Selected Property:", selectedProperty?.name);
     console.log("Selected Room:", selectedRoom);
     console.log("Rooms Configuration:", rooms);
+    console.log("Contact Data:", contactData);
+    console.log("Authenticated Data:", authenticatedData);
     console.log("Trip Offer Price:", tripOfferPrice);
     console.log("Accommodation Price:", accommodationPrice);
     console.log("Total Price:", totalPrice);
+    console.log("Is Request Only:", hasRequestOnly);
     console.log("======================");
+
+    // Simulate processing
+    setTimeout(() => {
+      setIsBooking(false);
+      // In a real implementation, you would navigate to booking confirmation
+    }, 1000);
+  };
+
+  // Get available date ranges for selected departure, filtered by linkedToDepartures
+  const getAvailableDateRanges = (): PackageDateRange[] => {
+    if (!pkg?.dateRanges || !selectedDeparture) return [];
+    
+    // Filter date ranges: show only those with no linkedToDepartures OR linked to selected departure
+    return pkg.dateRanges.filter(dateRange => {
+      if (!dateRange.linkedToDepartures || dateRange.linkedToDepartures.length === 0) {
+        return true;
+      }
+      return dateRange.linkedToDepartures.some(dep => dep.id === selectedDeparture.id);
+    });
   };
 
   // Get available offers for selected date range, filtered by departure
@@ -232,11 +312,9 @@ export function PackageDetails({
     
     // Filter offers: show only offers with no linkedToDepartures OR linked to selected departure
     return offers.filter(offer => {
-      // If no linkedToDepartures, show the offer (available for all departures)
       if (!offer.linkedToDepartures || offer.linkedToDepartures.length === 0) {
         return true;
       }
-      // If linkedToDepartures exists, check if selected departure is in the list
       return offer.linkedToDepartures.some(dep => dep.id === selectedDeparture.id);
     });
   };
@@ -278,6 +356,7 @@ export function PackageDetails({
     pkg.content.description.root.children.length > 0;
 
   const TransportIcon = pkg.meta?.transportation === 'plane' ? PlaneIcon : ShipIcon;
+  const availableDateRanges = getAvailableDateRanges();
   const availableOffers = getAvailableOffers();
   const hasDepartures = pkg.departures && pkg.departures.length > 0;
   const hasMultipleDepartures = pkg.departures && pkg.departures.length > 1;
@@ -433,9 +512,9 @@ export function PackageDetails({
                   <h2 className="text-xl font-semibold">Select Travel Dates</h2>
                 </div>
 
-                {pkg.dateRanges && pkg.dateRanges.length > 0 ? (
+                {availableDateRanges.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pkg.dateRanges.map((dateRange, idx) => {
+                    {availableDateRanges.map((dateRange, idx) => {
                       const isSelected = selectedDateRange === dateRange;
                       const rangeNights = dateRange.from && dateRange.to 
                         ? calculateNights(dateRange.from, dateRange.to) 
@@ -477,7 +556,7 @@ export function PackageDetails({
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
-                    No available dates for this package.
+                    No available dates for this departure. Please select a different departure point.
                   </p>
                 )}
               </div>
@@ -649,6 +728,7 @@ export function PackageDetails({
                       const isSelected = selectedRoom?.roomId === room.id;
                       const roomImage = room.images?.[0]?.thumbnailUrl || room.images?.[0]?.url;
                       const bestPrice = room.prices?.[0]; // Get first price option
+                      const isRoomRequestOnly = !bestPrice || bestPrice.price === 0;
 
                       return (
                         <button
@@ -687,9 +767,13 @@ export function PackageDetails({
                                 </div>
                               )}
                             </div>
-                            {bestPrice && (
+                            {isRoomRequestOnly ? (
+                              <span className="text-sm font-medium text-amber-600 dark:text-amber-400 mt-2 inline-block">
+                                Request Only
+                              </span>
+                            ) : (
                               <p className="text-lg font-bold text-primary mt-2">
-                                {formatCurrency(bestPrice.price, selectedProperty.currency)}
+                                {formatCurrency(bestPrice!.price, selectedProperty.currency)}
                               </p>
                             )}
                           </div>
@@ -790,7 +874,11 @@ export function PackageDetails({
                         <p className="text-sm text-muted-foreground">
                           {selectedProperty.rooms?.find(r => r.id === selectedRoom.roomId)?.name}
                         </p>
-                        {accommodationPrice > 0 && (
+                        {selectedRoom.isRequestOnly ? (
+                          <span className="text-sm font-medium text-amber-600 dark:text-amber-400 mt-1 inline-block">
+                            Request Only
+                          </span>
+                        ) : accommodationPrice > 0 && (
                           <p className="text-sm font-semibold text-primary mt-1">
                             {formatCurrency(accommodationPrice, selectedProperty.currency)}
                           </p>
@@ -811,8 +899,18 @@ export function PackageDetails({
                 </div>
               </div>
 
-              {/* Price Breakdown */}
-              {(tripOfferPrice > 0 || accommodationPrice > 0) && (
+              {/* Request Only Warning */}
+              {selectedRoom && hasRequestOnly && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    Price not available for this selection. Submit a request
+                    and we&apos;ll get back to you with pricing.
+                  </p>
+                </div>
+              )}
+
+              {/* Price Breakdown - only show if not request only */}
+              {selectedRoom && !hasRequestOnly && (tripOfferPrice > 0 || accommodationPrice > 0) && (
                 <>
                   <Separator />
                   <div className="space-y-2">
@@ -838,17 +936,28 @@ export function PackageDetails({
                   </div>
                 </>
               )}
+
+              {/* Booking Contact Form */}
+              {showBookingForm && selectedRoom && (
+                <div className="space-y-4 pt-4 border-t">
+                  <BookingContactForm
+                    onContactDataChange={setContactData}
+                    onAuthenticatedDataChange={setAuthenticatedData}
+                    disabled={isBooking}
+                  />
+                  
+                  {/* Booking Error */}
+                  {bookingError && (
+                    <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-lg">
+                      <AlertCircleIcon className="h-4 w-4 flex-shrink-0" />
+                      <span>{bookingError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
-            <CardFooter>
-              {currentStep === "review" && selectedRoom ? (
-                <Button
-                  className="w-full"
-                  size="lg"
-                  onClick={handleBookNow}
-                >
-                  Book Now
-                </Button>
-              ) : (
+            <CardFooter className="flex-col gap-3">
+              {currentStep !== "review" || !selectedRoom ? (
                 <div className="w-full text-center">
                   <p className="text-sm text-muted-foreground">
                     {currentStep === "select-departure" && "Select a departure point to continue"}
@@ -858,6 +967,41 @@ export function PackageDetails({
                     {currentStep === "select-room" && "Select a room to continue"}
                   </p>
                 </div>
+              ) : !showBookingForm ? (
+                <Button
+                  className="w-full"
+                  size="lg"
+                  onClick={() => setShowBookingForm(true)}
+                  variant={hasRequestOnly ? "outline" : "default"}
+                >
+                  {hasRequestOnly ? "Submit Request" : "Continue to Booking"}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleBookNow}
+                    disabled={isBooking || !isBookingFormValid}
+                    variant={hasRequestOnly ? "outline" : "default"}
+                  >
+                    {isBooking
+                      ? "Processing..."
+                      : hasRequestOnly
+                        ? "Send Request"
+                        : "Complete Booking"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setShowBookingForm(false);
+                      setBookingError(null);
+                    }}
+                  >
+                    Back
+                  </Button>
+                </>
               )}
             </CardFooter>
           </Card>

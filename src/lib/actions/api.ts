@@ -650,6 +650,7 @@ function transformPackage(pkg: Record<string, unknown>): Package {
       from: dr.from as number | undefined,
       to: dr.to as number | undefined,
       properties: dr.properties as number[] | undefined,
+      linkedToDepartures: transformLinkedDepartures(dr.linkedToDepartures),
       trip: trip ? {
         hasCustomInfos: trip.hasCustomInfos as boolean | undefined,
         customDepartInfo: trip.customDepartInfo as string[] | undefined,

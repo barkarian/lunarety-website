@@ -136,6 +136,7 @@ export interface PackageDateRange {
   from?: number; // YYYYMMDD
   to?: number; // YYYYMMDD
   properties?: number[]; // Property IDs (not populated)
+  linkedToDepartures?: PackageLocation[]; // Optional - which departures this date range is linked to
   trip?: {
     hasCustomInfos?: boolean;
     customDepartInfo?: string[];
