@@ -8,8 +8,10 @@ import { PropertiesService } from "@/lib/api/generated/services/PropertiesServic
 import { BookingsService } from "@/lib/api/generated/services/BookingsService";
 import { WebsiteService } from "@/lib/api/generated/services/WebsiteService";
 import { AuthenticationService } from "@/lib/api/generated/services/AuthenticationService";
+import { PackagesService } from "@/lib/api/generated/services/PackagesService";
 import type { RoomOccupancy } from "@/lib/api/generated/models/RoomOccupancy";
 import { WebsiteType } from "@/lib/api/generated/models/WebsiteType";
+import type { Package, PackageLocation, PackageOffer, MediaImage } from "@/lib/types";
 
 const WEBSITE_API_KEY = process.env.WEBSITE_API_KEY!;
 const API_BASE_URL = process.env.LUNARETY_URL || 'http://localhost:3000';
@@ -543,5 +545,230 @@ export async function getUserBookings(
       success: false,
       error: error instanceof Error ? error.message : "Failed to fetch bookings",
     };
+  }
+}
+
+// Package API functions
+export interface GetPackagesParams {
+  page?: number;
+  limit?: number;
+  availabilityFrom?: number; // YYYYMMDD
+  availabilityTo?: number; // YYYYMMDD
+}
+
+export interface GetPackagesResult {
+  packages: Package[];
+  totalDocs: number;
+  totalPages: number;
+  page: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+// Helper to transform API package response to our Package type
+function transformPackage(pkg: Record<string, unknown>): Package {
+  const content = (pkg.content || {}) as Record<string, unknown>;
+  const meta = (pkg.meta || {}) as Record<string, unknown>;
+  const availabilityPeriod = (content.availabilityPeriod || {}) as Record<string, unknown>;
+  const media = (content.media || []) as Array<Record<string, unknown>>;
+  
+  // Transform departures - they may be populated objects or just IDs
+  const rawDepartures = (pkg.departures || []) as Array<Record<string, unknown> | number>;
+  const departures: PackageLocation[] = rawDepartures.map((dep) => {
+    if (typeof dep === 'number') {
+      return { id: dep, name: `Location ${dep}` };
+    }
+    return {
+      id: dep.id as number,
+      name: dep.name as string,
+      type: dep.type as string | undefined,
+      mapsUrl: dep.mapsUrl as string | undefined,
+    };
+  });
+  
+  // Transform destination
+  const rawDestination = pkg.destination as Record<string, unknown> | number | undefined;
+  let destination: PackageLocation | undefined;
+  if (rawDestination) {
+    if (typeof rawDestination === 'number') {
+      destination = { id: rawDestination, name: `Location ${rawDestination}` };
+    } else {
+      destination = {
+        id: rawDestination.id as number,
+        name: rawDestination.name as string,
+        type: rawDestination.type as string | undefined,
+        mapsUrl: rawDestination.mapsUrl as string | undefined,
+      };
+    }
+  }
+  
+  // Transform default offers
+  const rawOffers = (pkg.defaultOffers || []) as Array<Record<string, unknown>>;
+  const defaultOffers: PackageOffer[] = rawOffers.map((offer) => ({
+    adults: offer.adults as number | undefined,
+    children: offer.children as number | undefined,
+    group: offer.group as string | undefined,
+    total: offer.total as number | undefined,
+  }));
+  
+  // Transform date ranges
+  const rawDateRanges = (pkg.dateRanges || []) as Array<Record<string, unknown>>;
+  const dateRanges = rawDateRanges.map((dr) => {
+    const trip = dr.trip as Record<string, unknown> | undefined;
+    const offers = dr.offers as Record<string, unknown> | undefined;
+    return {
+      from: dr.from as number | undefined,
+      to: dr.to as number | undefined,
+      properties: dr.properties as number[] | undefined,
+      trip: trip ? {
+        hasCustomInfos: trip.hasCustomInfos as boolean | undefined,
+        customDepartInfo: trip.customDepartInfo as string[] | undefined,
+        customReturnInfo: trip.customReturnInfo as string | undefined,
+      } : undefined,
+      offers: offers ? {
+        hasCustomOffers: offers.hasCustomOffers as boolean | undefined,
+        customOffers: (offers.customOffers || []) as PackageOffer[],
+      } : undefined,
+    };
+  });
+  
+  // Transform media with URLs
+  const transformedMedia: MediaImage[] = media.map((m) => ({
+    url: resolveImageUrl(m.url as string),
+    thumbnailUrl: resolveImageUrl(m.thumbnailURL as string) || resolveImageUrl(m.url as string),
+    alt: m.alt as string | undefined,
+  }));
+
+  return {
+    id: pkg.id as number,
+    packageName: pkg.packageName as string | undefined,
+    fromPrice: pkg.fromPrice as number | undefined,
+    order: pkg.order as number | undefined,
+    departures,
+    defaultDepartInfo: pkg.defaultDepartInfo as string[] | undefined,
+    destination,
+    defaultReturnInfo: pkg.defaultReturnInfo as string | undefined,
+    meta: {
+      transportation: meta.transportation as 'ship' | 'plane' | undefined,
+      tags: meta.tags as string[] | undefined,
+    },
+    defaultOffers,
+    dateRanges,
+    content: {
+      shortDescription: content.shortDescription as string | undefined,
+      description: content.description as Record<string, unknown> | undefined,
+      media: transformedMedia,
+      durationInDaysOptions: content.durationInDaysOptions as number | null | undefined,
+      availabilityPeriod: {
+        from: availabilityPeriod.from as number | undefined,
+        to: availabilityPeriod.to as number | undefined,
+      },
+    },
+    website: pkg.website as number | undefined,
+    updatedAt: pkg.updatedAt as string | undefined,
+    createdAt: pkg.createdAt as string | undefined,
+  };
+}
+
+export async function getWebsitePackages(params: GetPackagesParams = {}): Promise<GetPackagesResult> {
+  try {
+    const response = await PackagesService.getWebsitePackages(WEBSITE_API_KEY, {
+      page: params.page || 1,
+      limit: params.limit || 20,
+      filters: {
+        availabilityFrom: params.availabilityFrom,
+        availabilityTo: params.availabilityTo,
+      },
+    });
+
+    const rawPackages = (response as { packages?: unknown[] }).packages || [];
+    const packages = (rawPackages as Array<Record<string, unknown>>).map(transformPackage);
+
+    return {
+      packages,
+      totalDocs: response.totalDocs,
+      totalPages: response.totalPages,
+      page: response.page,
+      limit: response.limit,
+      hasNextPage: response.hasNextPage,
+      hasPrevPage: response.hasPrevPage,
+    };
+  } catch (error) {
+    console.error("Error fetching packages:", error);
+    throw error;
+  }
+}
+
+export async function getPackageById(packageId: string): Promise<Package | null> {
+  try {
+    const response = await PackagesService.getPackageById(WEBSITE_API_KEY, packageId);
+    const pkg = (response as { package?: Record<string, unknown> }).package;
+    
+    if (!pkg) {
+      return null;
+    }
+
+    return transformPackage(pkg);
+  } catch (error) {
+    console.error("Error fetching package:", error);
+    throw error;
+  }
+}
+
+// Get properties by IDs for package detail page
+export async function getPropertiesByIds(propertyIds: number[], dateFrom?: number, dateTo?: number) {
+  try {
+    if (!propertyIds || propertyIds.length === 0) {
+      return { properties: [] };
+    }
+
+    // Use getAvailability with specific property IDs to get room availability and pricing
+    if (dateFrom && dateTo) {
+      return await getAvailability({
+        from: dateFrom,
+        to: dateTo,
+        rooms: [{ adults: 2, children: 0 }], // Default room config for pricing
+        propertyIds,
+      });
+    }
+
+    // Fallback: get properties without availability/pricing
+    const response = await PropertiesService.getProperties(WEBSITE_API_KEY, {
+      websiteType: WebsiteType.PLATFORM_MARKETPLACE,
+      type: "custom",
+      propertyIds,
+    });
+
+    const rawProperties = (response as { properties?: unknown[] }).properties || [];
+    const properties = (rawProperties as Array<Record<string, unknown>>).map((prop) => {
+      const content = (prop.content || {}) as Record<string, unknown>;
+      const location = (content.location || {}) as Record<string, unknown>;
+      const propMedia = (content.media || prop.images || []) as Array<Record<string, unknown>>;
+
+      return {
+        id: prop.id as number,
+        name: (prop.name || prop.title || `Property ${prop.id}`) as string,
+        description: (content.shortDescription || prop.description) as string | undefined,
+        shortDescription: content.shortDescription as string | undefined,
+        address: (location.address || prop.address) as string | undefined,
+        city: prop.city as string | undefined,
+        country: prop.country as string | undefined,
+        locationUrl: location.url as string | undefined,
+        images: propMedia.map((m) => ({
+          url: resolveImageUrl(m.url as string),
+          thumbnailUrl: resolveImageUrl(m.thumbnailURL as string) || resolveImageUrl(m.url as string),
+          alt: m.alt as string | undefined,
+        })),
+        currency: (prop.currency || "EUR") as string,
+        fromPrice: prop.fromPrice as number | undefined,
+        rooms: [],
+      };
+    });
+
+    return { properties };
+  } catch (error) {
+    console.error("Error fetching properties by IDs:", error);
+    throw error;
   }
 }

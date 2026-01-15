@@ -116,6 +116,75 @@ export interface BookingHolder {
   countryCode?: string;
 }
 
+// Package Types
+export interface PackageLocation {
+  id: number;
+  name: string;
+  type?: string;
+  mapsUrl?: string;
+}
+
+export interface PackageOffer {
+  adults?: number;
+  children?: number;
+  group?: string;
+  total?: number;
+}
+
+export interface PackageDateRange {
+  from?: number; // YYYYMMDD
+  to?: number; // YYYYMMDD
+  properties?: number[]; // Property IDs (not populated)
+  trip?: {
+    hasCustomInfos?: boolean;
+    customDepartInfo?: string[];
+    customReturnInfo?: string;
+  };
+  offers?: {
+    hasCustomOffers?: boolean;
+    customOffers?: PackageOffer[];
+  };
+}
+
+export interface PackageContent {
+  shortDescription?: string;
+  description?: RichTextContent;
+  media?: MediaImage[];
+  durationInDaysOptions?: number | null;
+  availabilityPeriod?: {
+    from?: number; // YYYYMMDD
+    to?: number; // YYYYMMDD
+  };
+}
+
+export interface Package {
+  id: number;
+  packageName?: string;
+  fromPrice?: number;
+  order?: number;
+  departures?: PackageLocation[];
+  defaultDepartInfo?: string[];
+  destination?: PackageLocation;
+  defaultReturnInfo?: string;
+  meta?: {
+    transportation?: 'ship' | 'plane';
+    tags?: string[];
+  };
+  defaultOffers?: PackageOffer[];
+  dateRanges?: PackageDateRange[];
+  content?: PackageContent;
+  website?: number;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface PackageSearchParams {
+  availabilityFrom?: string;
+  availabilityTo?: string;
+  adults?: string;
+  children?: string;
+}
+
 export interface BookingRoom {
   roomId: number | string;
   roomName: string;
