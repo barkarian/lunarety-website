@@ -60,11 +60,11 @@ export function PackageCard({
           )}
 
           {/* Duration Badge */}
-          {pkg.content?.durationInDaysOptions && (
+          {pkg.content?.durationInDaysOptions && Array.isArray(pkg.content.durationInDaysOptions) && (
             <div className="absolute top-3 left-3 flex items-center gap-1 bg-primary/90 text-primary-foreground backdrop-blur-sm rounded-full px-2.5 py-1">
               <CalendarIcon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">
-                {pkg.content.durationInDaysOptions} days
+                {pkg.content.durationInDaysOptions.join(" / ")} days
               </span>
             </div>
           )}

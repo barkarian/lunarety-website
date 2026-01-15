@@ -152,7 +152,7 @@ export interface PackageContent {
   shortDescription?: string;
   description?: RichTextContent;
   media?: MediaImage[];
-  durationInDaysOptions?: number | null;
+  durationInDaysOptions?: number[] | null;
   availabilityPeriod?: {
     from?: number; // YYYYMMDD
     to?: number; // YYYYMMDD

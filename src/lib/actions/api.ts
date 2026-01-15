@@ -689,7 +689,7 @@ function transformPackage(pkg: Record<string, unknown>): Package {
       shortDescription: content.shortDescription as string | undefined,
       description: content.description as Record<string, unknown> | undefined,
       media: transformedMedia,
-      durationInDaysOptions: content.durationInDaysOptions as number | null | undefined,
+      durationInDaysOptions: content.durationInDaysOptions as number[] | null | undefined,
       availabilityPeriod: {
         from: availabilityPeriod.from as number | undefined,
         to: availabilityPeriod.to as number | undefined,
