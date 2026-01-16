@@ -558,6 +558,7 @@ export interface GetPackagesParams {
   destinationIds?: number[];
   transportation?: 'ship' | 'plane';
   tags?: string[];
+  daysDurations?: number[]; // Filter by trip duration in days (OR logic)
 }
 
 export interface GetPackagesResult {
@@ -717,6 +718,7 @@ export async function getWebsitePackages(params: GetPackagesParams = {}): Promis
         destinationIds: params.destinationIds,
         transportation: params.transportation,
         tags: params.tags,
+        daysDurations: params.daysDurations,
       },
     });
 

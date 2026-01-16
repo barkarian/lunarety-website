@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { PackageSearchBar } from "@/components/search/PackageSearchBar";
+import { PackageFilters } from "@/components/search/PackageFilters";
 import { PackageResults } from "./PackageResults";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProtectedContent } from "@/components/auth/ProtectedContent";
@@ -10,6 +11,11 @@ interface PageProps {
     availabilityFrom?: string;
     availabilityTo?: string;
     rooms?: string;
+    // Filter params
+    daysMin?: string;
+    daysMax?: string;
+    transportation?: string;
+    tags?: string;
   }>;
 }
 
@@ -43,6 +49,15 @@ export default async function PackagesPage({ searchParams }: PageProps) {
           </div>
         </section>
 
+        {/* Filters Section */}
+        <section className="px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <Suspense fallback={<FiltersSkeleton />}>
+              <PackageFilters />
+            </Suspense>
+          </div>
+        </section>
+
         {/* Results Section */}
         <section className="py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
@@ -71,6 +86,17 @@ function SearchBarSkeleton() {
         <Skeleton className="h-14 flex-1 lg:max-w-xs" />
         <Skeleton className="h-14 w-32" />
       </div>
+    </div>
+  );
+}
+
+function FiltersSkeleton() {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Skeleton className="h-9 w-20" />
+      <Skeleton className="h-9 w-28" />
+      <Skeleton className="h-9 w-32" />
+      <Skeleton className="h-9 w-24" />
     </div>
   );
 }

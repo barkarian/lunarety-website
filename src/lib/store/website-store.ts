@@ -23,7 +23,7 @@ export interface WebsiteFilterPackages {
   departures?: FilterLocation[] | null;
   destinations?: FilterLocation[] | null;
   numberOfDays?: number[] | null;
-  transportation?: ("bus" | "plane")[] | null;
+  transportation?: ("ship" | "plane")[] | null;
   tags?: string[] | null;
 }
 

@@ -14,6 +14,11 @@ interface PackageResultsProps {
     availabilityFrom?: string;
     availabilityTo?: string;
     rooms?: string;
+    // Filter params
+    daysMin?: string;
+    daysMax?: string;
+    transportation?: string;
+    tags?: string;
   };
 }
 
@@ -43,6 +48,16 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
   const rooms = parseRooms(searchParams.rooms);
   const totalGuests = rooms.reduce((acc, room) => acc + room.adults + room.children, 0);
 
+  // Parse filter params
+  const daysMin = searchParams.daysMin
+    ? parseInt(searchParams.daysMin, 10)
+    : undefined;
+  const daysMax = searchParams.daysMax
+    ? parseInt(searchParams.daysMax, 10)
+    : undefined;
+  const transportation = searchParams.transportation as 'ship' | 'plane' | undefined;
+  const tags = searchParams.tags ? searchParams.tags.split(",") : undefined;
+
   // Build search params string for package links
   const urlParams = new URLSearchParams();
   if (departureId) {
@@ -61,8 +76,30 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
       availabilityFrom,
       availabilityTo,
       departureIds: departureId ? [departureId] : undefined,
+      transportation,
+      tags,
     });
-    packages = result.packages || [];
+    let fetchedPackages = result.packages || [];
+
+    // Client-side filtering for days of travelling
+    // Filter by durationInDaysOptions in package content
+    if (daysMin !== undefined || daysMax !== undefined) {
+      fetchedPackages = fetchedPackages.filter((pkg) => {
+        const durationOptions = pkg.content?.durationInDaysOptions;
+        if (!durationOptions || durationOptions.length === 0) {
+          // If package doesn't have duration info, include it (or exclude based on preference)
+          return true;
+        }
+        // Check if any of the package's duration options fall within the filter range
+        return durationOptions.some((days) => {
+          const meetsMin = daysMin === undefined || days >= daysMin;
+          const meetsMax = daysMax === undefined || days <= daysMax;
+          return meetsMin && meetsMax;
+        });
+      });
+    }
+
+    packages = fetchedPackages;
   } catch (e) {
     error = e instanceof Error ? e.message : "Failed to fetch packages";
     console.error("Error fetching packages:", e);
