@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MapPinIcon, CalendarIcon, PlaneIcon, ShipIcon } from "lucide-react";
+import { MapPinIcon, CalendarIcon, PlaneIcon, ShipIcon, BusIcon, TrainFrontIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -29,7 +29,16 @@ export function PackageCard({
   const isRequestOnly = fromPrice === 0 || fromPrice === undefined;
 
   // Get transportation icon
-  const TransportIcon = pkg.meta?.transportation === 'plane' ? PlaneIcon : ShipIcon;
+  const getTransportIcon = () => {
+    switch (pkg.meta?.transportation) {
+      case 'airplane': return PlaneIcon;
+      case 'ship': return ShipIcon;
+      case 'bus': return BusIcon;
+      case 'train': return TrainFrontIcon;
+      default: return null;
+    }
+  };
+  const TransportIcon = getTransportIcon();
 
   // Format availability period
   const availabilityPeriod = pkg.content?.availabilityPeriod;
@@ -50,7 +59,7 @@ export function PackageCard({
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
           {/* Transportation Badge */}
-          {pkg.meta?.transportation && (
+          {pkg.meta?.transportation && TransportIcon && (
             <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/90 dark:bg-black/70 backdrop-blur-sm rounded-full px-2.5 py-1">
               <TransportIcon className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold capitalize">

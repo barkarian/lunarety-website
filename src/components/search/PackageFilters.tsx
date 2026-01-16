@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FilterIcon, PlaneIcon, ShipIcon, XIcon, ChevronDownIcon } from "lucide-react";
+import { FilterIcon, PlaneIcon, ShipIcon, BusIcon, TrainFrontIcon, XIcon, ChevronDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -135,9 +135,33 @@ export function PackageFilters({ className }: PackageFiltersProps) {
 
   // Get display text for transportation
   const getTransportDisplayText = () => {
-    if (transportation === "plane") return "By Plane";
+    if (transportation === "airplane") return "By Airplane";
     if (transportation === "ship") return "By Ship";
+    if (transportation === "bus") return "By Bus";
+    if (transportation === "train") return "By Train";
     return "Any transport";
+  };
+
+  // Get transportation icon component
+  const getTransportIcon = (type: string) => {
+    switch (type) {
+      case "airplane": return PlaneIcon;
+      case "ship": return ShipIcon;
+      case "bus": return BusIcon;
+      case "train": return TrainFrontIcon;
+      default: return null;
+    }
+  };
+
+  // Get transportation label
+  const getTransportLabel = (type: string) => {
+    switch (type) {
+      case "airplane": return "Airplane";
+      case "ship": return "Ship";
+      case "bus": return "Bus";
+      case "train": return "Train";
+      default: return type;
+    }
   };
 
   if (websiteLoading) {
@@ -266,8 +290,10 @@ export function PackageFilters({ className }: PackageFiltersProps) {
                 transportation && "border-primary bg-primary/5"
               )}
             >
-              {transportation === "plane" && <PlaneIcon className="mr-2 h-4 w-4" />}
-              {transportation === "ship" && <ShipIcon className="mr-2 h-4 w-4" />}
+              {transportation && (() => {
+                const Icon = getTransportIcon(transportation);
+                return Icon ? <Icon className="mr-2 h-4 w-4" /> : null;
+              })()}
               <span>{getTransportDisplayText()}</span>
               <ChevronDownIcon className="ml-2 h-4 w-4" />
             </Button>
@@ -283,26 +309,20 @@ export function PackageFilters({ className }: PackageFiltersProps) {
                 >
                   Any transportation
                 </Button>
-                {availableTransportation.includes("plane") && (
-                  <Button
-                    variant={transportation === "plane" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => setTransportation("plane")}
-                  >
-                    <PlaneIcon className="mr-2 h-4 w-4" />
-                    By Plane
-                  </Button>
-                )}
-                {availableTransportation.includes("ship") && (
-                  <Button
-                    variant={transportation === "ship" ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                    onClick={() => setTransportation("ship")}
-                  >
-                    <ShipIcon className="mr-2 h-4 w-4" />
-                    By Ship
-                  </Button>
-                )}
+                {availableTransportation.map((type) => {
+                  const Icon = getTransportIcon(type);
+                  return (
+                    <Button
+                      key={type}
+                      variant={transportation === type ? "secondary" : "ghost"}
+                      className="w-full justify-start"
+                      onClick={() => setTransportation(type)}
+                    >
+                      {Icon && <Icon className="mr-2 h-4 w-4" />}
+                      By {getTransportLabel(type)}
+                    </Button>
+                  );
+                })}
               </div>
               <div className="flex justify-end pt-2 border-t">
                 <Button

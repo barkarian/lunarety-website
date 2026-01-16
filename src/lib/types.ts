@@ -169,7 +169,7 @@ export interface Package {
   destination?: PackageLocation;
   defaultReturnInfo?: string;
   meta?: {
-    transportation?: 'ship' | 'plane';
+    transportation?: 'ship' | 'airplane' | 'bus' | 'train';
     tags?: string[];
   };
   defaultOffers?: PackageOffer[];

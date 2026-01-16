@@ -68,7 +68,7 @@ export class PackagesService {
              */
             defaultReturnInfo?: string;
             meta?: {
-                transportation?: 'ship' | 'plane';
+                transportation?: 'ship' | 'airplane' | 'bus' | 'train';
                 tags?: Array<string>;
             };
             /**
@@ -257,7 +257,7 @@ export class PackagesService {
                 /**
                  * Filter by transportation type
                  */
-                transportation?: 'ship' | 'plane';
+                transportation?: 'ship' | 'airplane' | 'bus' | 'train';
                 /**
                  * Filter by tags (OR logic - returns packages that have ANY of these tags)
                  */
@@ -317,7 +317,7 @@ export class PackagesService {
              */
             defaultReturnInfo?: string;
             meta?: {
-                transportation?: 'ship' | 'plane';
+                transportation?: 'ship' | 'airplane' | 'bus' | 'train';
                 tags?: Array<string>;
             };
             /**

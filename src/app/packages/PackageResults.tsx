@@ -55,7 +55,7 @@ export async function PackageResults({ searchParams }: PackageResultsProps) {
   const daysMax = searchParams.daysMax
     ? parseInt(searchParams.daysMax, 10)
     : undefined;
-  const transportation = searchParams.transportation as 'ship' | 'plane' | undefined;
+  const transportation = searchParams.transportation as 'ship' | 'airplane' | 'bus' | 'train' | undefined;
   const tags = searchParams.tags ? searchParams.tags.split(",") : undefined;
 
   // Build search params string for package links

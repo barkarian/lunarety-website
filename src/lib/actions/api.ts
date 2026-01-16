@@ -556,7 +556,7 @@ export interface GetPackagesParams {
   availabilityTo?: number; // YYYYMMDD
   departureIds?: number[];
   destinationIds?: number[];
-  transportation?: 'ship' | 'plane';
+  transportation?: 'ship' | 'airplane' | 'bus' | 'train';
   tags?: string[];
   daysDurations?: number[]; // Filter by trip duration in days (OR logic)
 }
@@ -685,7 +685,7 @@ function transformPackage(pkg: Record<string, unknown>): Package {
     destination,
     defaultReturnInfo: pkg.defaultReturnInfo as string | undefined,
     meta: {
-      transportation: meta.transportation as 'ship' | 'plane' | undefined,
+      transportation: meta.transportation as 'ship' | 'airplane' | 'bus' | 'train' | undefined,
       tags: meta.tags as string[] | undefined,
     },
     defaultOffers,

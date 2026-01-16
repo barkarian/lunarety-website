@@ -160,7 +160,7 @@ export class WebsiteService {
                 /**
                  * Array of unique transportation types from packages
                  */
-                transportation?: Array<'bus' | 'plane'> | null;
+                transportation?: Array<'ship' | 'airplane' | 'bus' | 'train'> | null;
                 /**
                  * Array of unique tags from packages
                  */
