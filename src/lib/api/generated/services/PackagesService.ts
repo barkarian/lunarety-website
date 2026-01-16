@@ -191,10 +191,18 @@ export class PackagesService {
      * Only available for websites with type "platformMarketplace".
      *
      * **Filtering:**
-     * - Filter by departure and destination locations
+     * - Filter by departure and destination locations (OR logic)
      * - Filter by availability period (packages that overlap with the given date range)
      * - Filter by transportation type (ship/plane)
-     * - Filter by tags
+     * - Filter by tags (OR logic)
+     * - Filter by trip duration in days (OR logic)
+     *
+     * **OR Logic Filters:**
+     * The following filters use OR logic - packages matching ANY of the provided values are returned:
+     * - `departureIds`: Returns packages departing from ANY of the specified locations
+     * - `destinationIds`: Returns packages going to ANY of the specified destinations
+     * - `tags`: Returns packages with ANY of the specified tags
+     * - `daysDurations`: Returns packages offering ANY of the specified duration options
      *
      * **Important Notes:**
      * - Packages with `content.availabilityPeriod.to` in the past are automatically excluded
@@ -226,11 +234,11 @@ export class PackagesService {
              */
             filters?: {
                 /**
-                 * Filter by departure location IDs (returns packages that have ANY of these departures)
+                 * Filter by departure location IDs (OR logic - returns packages that have ANY of these departures)
                  */
                 departureIds?: Array<number>;
                 /**
-                 * Filter by destination location IDs (returns packages that have ANY of these destinations)
+                 * Filter by destination location IDs (OR logic - returns packages that have ANY of these destinations)
                  */
                 destinationIds?: Array<number>;
                 /**
@@ -251,9 +259,16 @@ export class PackagesService {
                  */
                 transportation?: 'ship' | 'plane';
                 /**
-                 * Filter by tags (returns packages that have ANY of these tags)
+                 * Filter by tags (OR logic - returns packages that have ANY of these tags)
                  */
                 tags?: Array<string>;
+                /**
+                 * Filter by trip duration in days (OR logic - returns packages with ANY matching duration option).
+                 * Each package has a list of available duration options (e.g., 3, 5, 7 days).
+                 * Specifying [5, 7] returns packages that offer either 5-day or 7-day trips.
+                 *
+                 */
+                daysDurations?: Array<number>;
             };
         },
     ): CancelablePromise<{
